@@ -17,10 +17,49 @@ library(here) # data organization
 urchin <- read.csv(here("data","mesocosm_density_data.csv"))
 ```
 
+# Cleaning Data & Using Mutate Function
+
 ```{r}
-# reading in data
+#| label: urchin-data-cleaning
+# create new object urchin_clean
+urchin_clean <- urchin |> 
+  # clean column names
+  clean_names() |>
+  # keeping first unique row for each unique combination 
+  # used to remove repetative data from each individual urchin
+  distinct(trial_id, tank, .keep_all = TRUE) |> 
+  # filter for trials with no mortality 
+  filter(mortality == 0) |> 
+  # mutate p_r to show the different species of urchins
+  rename(species = p_r) |> 
+  mutate(species = case_when(
+    species == "p" ~ "purple",
+    species == "r" ~ "red"
+    )) |> 
+  # mutate kelp_in and kelp_out columns to the kelp foraging rate of the urchins
+  mutate(
+    foraging_rate_pct = (kelp_in - kelp_out) / kelp_in * 100) |> 
+  # select for desired columns of interest 
+  select(urchin_density, foraging_rate_pct, species)
+```
+
+# Visualization 
+
+```{r}
+
+
+
+
 
 
 
 
 ```
+
+
+
+
+
+
+
+
