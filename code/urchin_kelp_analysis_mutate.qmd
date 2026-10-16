@@ -6,6 +6,8 @@ format: html
 # Set Up
 
 ```{r}
+#| message: false
+#| warning: false
 # loading in packages 
 library(tidyverse) # general use
 library(janitor) # cleaning data 
@@ -33,33 +35,78 @@ urchin_clean <- urchin |>
   # mutate p_r to show the different species of urchins
   rename(species = p_r) |> 
   mutate(species = case_when(
-    species == "p" ~ "purple",
-    species == "r" ~ "red"
+    species == "p" ~ "Purple urchin",
+    species == "r" ~ "Red urchin"
     )) |> 
   # mutate kelp_in and kelp_out columns to the kelp foraging rate of the urchins
   mutate(
-    foraging_rate_pct = (kelp_in - kelp_out) / kelp_in * 100) |> 
+    rate_per_urchin = (kelp_in - kelp_out) / total_time / urchin_density) |> 
+  mutate(
+    kelp_consumption_rate = (kelp_in - kelp_out) / total_time) |> 
   # select for desired columns of interest 
-  select(urchin_density, foraging_rate_pct, species)
+  select(urchin_density, rate_per_urchin, species, total_time, kelp_consumption_rate) 
 ```
 
 # Visualization 
 
 ```{r}
+#| label: visualization-of-urchin-density-rate
 
-
-
-
-
-
-
-
+# base plot 
+ggplot(data = urchin_clean,
+  # x-axis urchin density, y-axis urchin consumption rate
+  # color by species 
+       mapping = aes(x = urchin_density,
+                     y = rate_per_urchin,
+                     color = species)) + 
+  # first layer: geom_point
+  geom_point(shape = 20,
+             alpha = 0.5,
+             size = 4) + 
+  # separating by species 
+  facet_wrap(~species) +
+  # customizing colors
+  scale_color_manual(values = c(
+    "Purple urchin" = "mediumorchid4",
+    "Red urchin" = "firebrick")) +
+  # labeling axes and adding title 
+  labs(x = "Urchin density (per tank)",
+       y = "Kelp consumed per urchin (grams/hour)",
+       title = "Urchin foragaing rate on kelp across different urchin densities") + 
+  # adding custom theme 
+  theme_minimal() +
+  # removing legend
+  theme(legend.position = "none")
 ```
 
+```{r}
+#| label: visualization-of-kelp-consumption-rate
 
+# base plot 
+ggplot(data = urchin_clean,
+  # x-axis urchin density, y-axis urchin consumption rate
+  # color by species 
+       mapping = aes(x = urchin_density,
+                     y = kelp_consumption_rate,
+                     color = species)) + 
+  # first layer: geom_point
+  geom_point(shape = 20,
+             alpha = 0.5,
+             size = 4) + 
+    # separating by species 
+  facet_wrap(~species) +
+    # customizing colors
+  scale_color_manual(values = c(
+    "Purple urchin" = "mediumorchid4",
+    "Red urchin" = "firebrick")) +
+  labs(x = "Urchin density (urchins per tank)",
+       y = "Kelp consumption rate (grams/hour)",
+       title = "Kelp consumption versus urchin density") + 
+  # adding custom theme 
+  theme_minimal() +
+  # removing legend
+  theme(legend.position = "none")
+```
 
-
-
-
-
+DiFiore, B, M. Rennick, J. Curtis, D. Reed, A. Stier. 2021. SBC LTER: Sea urchin foraging rates on giant kelp ver 1. Environmental Data Initiative. https://doi.org/10.6073/pasta/6af4cc3b0e63b887baf1ae9201e1cd1d. Accessed 2026-10-16.
 
