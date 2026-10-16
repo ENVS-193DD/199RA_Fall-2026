@@ -1,0 +1,26 @@
+---
+title: "urchin_mutate_example"
+format: html
+---
+
+# Set Up
+
+```{r}
+# loading in packages 
+library(tidyverse) # general use
+library(janitor) # cleaning data 
+library(here) # data organization 
+
+# reading in data 
+
+# urchin density data from DiFiore et al. 2021
+urchin <- read.csv(here("data","mesocosm_density_data.csv"))
+```
+
+```{r}
+# reading in data
+
+
+
+
+```
