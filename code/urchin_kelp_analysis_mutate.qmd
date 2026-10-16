@@ -1,9 +1,10 @@
 ---
-title: "urchin_mutate_example"
-format: html
+title: "Urchin Foraging Rates on Kelp at Different Urchin Densities"
+subtitle: "Exploring the mutate function in RStudio through investigating urchin laboratory data from the SBC LTER."
+format: pdf
 ---
 
-# Set Up
+## Set Up
 
 ```{r}
 #| message: false
@@ -19,7 +20,7 @@ library(here) # data organization
 urchin <- read.csv(here("data","mesocosm_density_data.csv"))
 ```
 
-# Cleaning Data & Using Mutate Function
+## Cleaning Data & Using Mutate Function
 
 ```{r}
 #| label: urchin-data-cleaning
@@ -47,7 +48,7 @@ urchin_clean <- urchin |>
   select(urchin_density, rate_per_urchin, species, total_time, kelp_consumption_rate) 
 ```
 
-# Visualization 
+## Visualization 
 
 ```{r}
 #| label: visualization-of-urchin-density-rate
@@ -108,5 +109,6 @@ ggplot(data = urchin_clean,
   theme(legend.position = "none")
 ```
 
+## Data Citation
 DiFiore, B, M. Rennick, J. Curtis, D. Reed, A. Stier. 2021. SBC LTER: Sea urchin foraging rates on giant kelp ver 1. Environmental Data Initiative. https://doi.org/10.6073/pasta/6af4cc3b0e63b887baf1ae9201e1cd1d. Accessed 2026-10-16.
 
