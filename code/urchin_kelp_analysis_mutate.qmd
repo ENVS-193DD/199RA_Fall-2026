@@ -1,6 +1,7 @@
 ---
 title: "Urchin Foraging Rates on Kelp at Different Urchin Densities"
-subtitle: "Exploring the mutate function in RStudio through investigating urchin laboratory data from the SBC LTER."
+subtitle: "Exploring mutate and distinct functions in RStudio through investigating urchin laboratory data from the SBC LTER."
+author: "Elise LaFreniere"
 format: pdf
 ---
 
@@ -20,7 +21,7 @@ library(here) # data organization
 urchin <- read.csv(here("data","mesocosm_density_data.csv"))
 ```
 
-## Cleaning Data & Using Mutate Function
+## Cleaning Data & Using Mutate and Distinct Functions
 
 ```{r}
 #| label: urchin-data-cleaning
@@ -48,6 +49,34 @@ urchin_clean <- urchin |>
   select(urchin_density, rate_per_urchin, species, total_time, kelp_consumption_rate) 
 ```
 
+### Mutate (function in dplyr)
+
+The mutate function allows for new columns to be created that are *functions* of existing variables. It can also be used to modify and delete columns.    
+
+In this data set, mutate is used to:
+
+* Modify data in the p_r data (which is renamed to species) column to indicate the specific species being looked at instead of the shorthand notation used within the study. 
+* Create the rate_per_urchin column which is a function of existing variables (kelp_in, kelp_out, total_time, and urchin_density). This new column allows for the rate of kelp consumption over time per individual urchin to be able to be examined. 
+* Create the kelp_consumption_rate column which is a function of existing variables ((kelp_in, kelp_out, total_time). This new column calculates the rate of kelp consumption over time. 
+
+### Distinct (function in dplyr)
+
+The distinct function allows you to only keep unique rows within a data frame.
+
+* if .keep_all = FALSE, then the columns returned will only be the ones specified and duplicates of named columns will be removed
+* if .keep_all = TRUE, then all columns will remain but the specified columns will have duplicates from those columns removed from the data, where the first row is kept (the unique row)
+
+In this data set, distinct is used to:
+
+* Keep only the first unique rows for each trial_id and tank combination. This is useful since in this data frame each urchin was given its own row since data on urchin size and mass was also recorded. Yet, in these visualizations we are not interested in this data and instead are looking at the rows that remain consistent across each urchin tank. This prevents tanks with multiple urchins from being counted multiple times in visualizations.
+
+### Other transformations done to the data frame
+
+* clean_names(): used to simplify the column names from the original data file
+* filter(): used to remove rows where mortality was seen within an urchin population in a tank
+* re_name(): used to rename "p_r" column to "species" for better clarity
+* select(): used to select for desired columns within the data frame
+
 ## Visualization 
 
 ```{r}
@@ -73,12 +102,14 @@ ggplot(data = urchin_clean,
   # labeling axes and adding title 
   labs(x = "Urchin density (per tank)",
        y = "Kelp consumed per urchin (grams/hour)",
-       title = "Urchin foragaing rate on kelp across different urchin densities") + 
+       title = "Per-urchin foragaing rate on kelp \nacross different urchin densities") + 
   # adding custom theme 
   theme_minimal() +
   # removing legend
   theme(legend.position = "none")
 ```
+
+This visualization shows the kelp foraging rate (grams/hour) per urchin across different urchin densities, separated by urchin species. The red urchin data had fewer observations and were only tested at lower urchin densities than the purple urchin data. Comparing the two panels, the red urchins appear to have higher foraging rates per urchin at lower densities. Overall, foraging rates per urchin were highly variable, particularly at low urchin densities. For red urchins, the foraging rate per urchin appeared to decrease as density increased, yet for the purple urchins, there was no clear trend. 
 
 ```{r}
 #| label: visualization-of-kelp-consumption-rate
@@ -102,12 +133,14 @@ ggplot(data = urchin_clean,
     "Red urchin" = "firebrick")) +
   labs(x = "Urchin density (urchins per tank)",
        y = "Kelp consumption rate (grams/hour)",
-       title = "Kelp consumption versus urchin density") + 
+       title = "Kelp consumption rate versus urchin density") + 
   # adding custom theme 
   theme_minimal() +
   # removing legend
   theme(legend.position = "none")
 ```
+
+This visualization shows the kelp consumption rate (grams/hour) across different urchin densities, separated by species. The red urchin data had fewer observations and were tested at lower urchin densities than the purple urchin data. In lower densities, kelp consumption rates appear to be similar across both species, though few red urchins had higher rates. Overall, kelp foraging rates appears to increase with increased urchin densities. 
 
 ## Data Citation
 DiFiore, B, M. Rennick, J. Curtis, D. Reed, A. Stier. 2021. SBC LTER: Sea urchin foraging rates on giant kelp ver 1. Environmental Data Initiative. https://doi.org/10.6073/pasta/6af4cc3b0e63b887baf1ae9201e1cd1d. Accessed 2026-10-16.
