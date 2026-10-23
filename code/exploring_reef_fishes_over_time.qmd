@@ -1,0 +1,39 @@
+---
+title: "Fish Abundance Over Time"
+format: pdf
+---
+
+```{r}
+# loading in packages 
+library(tidyverse) # general use
+library(janitor) # cleaning data 
+library(here) # data organization 
+library(lubridate) # date and time 
+
+fish <- read.csv(here("data", "Annual_fish_comb_20260923.csv"))
+```
+
+```{r}
+# creating new object, fish_clean
+fish_clean <- fish |> 
+  # cleaning the names
+  clean_names() |> 
+  # renaming the date column to original_date
+  rename(original_date = date) |> 
+  # filtering to remove the no count data, -99999
+  filter(count >= 0) |> 
+  # using mutate and lubridate to convert orginal_date into new date column that can be used to create timeseries
+  mutate(
+    date = ymd(original_date)) |> 
+  # relocating columns to to left to be easier to look at
+  relocate(date, count, common_name, site)
+
+fish_species <- fish_clean |> 
+  select(common_name) |> 
+  unique() |>  
+  pull()
+
+fish_species
+
+length(fish_species)
+```
