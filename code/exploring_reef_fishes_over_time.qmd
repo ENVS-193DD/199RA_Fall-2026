@@ -4,6 +4,9 @@ format: pdf
 ---
 
 ```{r}
+#| label: loading-in-packages-and-data
+#| message: false
+#| warning: false
 # loading in packages 
 library(tidyverse) # general use
 library(janitor) # cleaning data 
@@ -25,7 +28,8 @@ fish_clean <- fish |>
   rename(original_date = date) |> 
   # filtering to remove the no count data, -99999
   filter(count >= 0) |> 
-  # using mutate and lubridate to convert original_date into new date column that can be used to create time series
+  # using mutate and lubridate to convert original_date 
+  # into new date column that can be used to create time series
   mutate(
     date = ymd(original_date),
     year_month = floor_date(date, unit = "month")) |> 
@@ -35,17 +39,8 @@ fish_clean <- fish |>
 
 ```{r}
 #| label: exploring-fish-by-abundance
-
-# creating new vector, fish_species
-fish_species <- fish_clean |> 
-  # selecting for common_name
-  select(common_name) |> 
-  # unique to drop name repeats 
-  unique() |>  
-  # using pull to extract column as a vector
-  pull()
-# viewing vector 
-fish_species
+#| message: false
+#| warning: false
 
 # creating top_species_table 
 top_species_table <- fish_clean |> 
@@ -68,6 +63,10 @@ top_species_vector <- top_species_table |>
 ```
 
 ```{r}
+#| label: visualization-prep
+#| message: false
+#| warning: false
+
 # creating new object fish_ts
 fish_ts <- fish_clean |> 
   # filtering for the top_species_vector in common_name
@@ -89,6 +88,9 @@ fish_ts <- fish_clean |>
 ```
 
 ```{r}
+#| label: monthly-fish-visualization
+#| fig-width: 7
+#| fig-height: 9
 # base plot
 ggplot(fish_ts, 
        # x-axis: time
