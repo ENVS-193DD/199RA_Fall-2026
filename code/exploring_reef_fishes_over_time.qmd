@@ -10,7 +10,8 @@ library(janitor) # cleaning data
 library(here) # data organization 
 library(lubridate) # date and time 
 
-fish <- read.csv(here("data", "Annual_fish_comb_20260923.csv"))
+fish <- read.csv(here("data", 
+                      "Monthly_Fish_All_Years.csv"))
 ```
 
 ```{r}
@@ -67,34 +68,63 @@ top_species_vector <- top_species_table |>
 ```
 
 ```{r}
+# creating new object fish_ts
 fish_ts <- fish_clean |> 
+  # filtering for the top_species_vector in common_name
   filter(common_name %in% top_species_vector) |>
+  # using fct_relevel to change order within common_name
   mutate(common_name = fct_relevel(
     common_name,
     top_species_vector)) |> 
+  # grouping data by date and species
   group_by(year_month,
            common_name) |> 
+  # summarize to make one row per month 
+  # sum to get the total fish count of each species
   summarize(total_count = sum(count)) |> 
   # ungrouping the data 
   ungroup() |> 
-    arrange(common_name, year_month)
+  # arranging by most abundant species and by date
+  arrange(common_name, year_month)
 ```
 
 ```{r}
+# base plot
 ggplot(fish_ts, 
+       # x-axis: time
        aes(x = year_month,
+           # y-axis: abundance
            y = total_count, 
+           # coloring by species
            color = common_name)) + 
+  # first layer: geom_line
   geom_line() + 
-  geom_point() + 
+  # second layer: geom_point
+  geom_point(size = 0.5) + 
+  # faceting by species
+  facet_wrap(~ common_name,
+             # putting into one column 
+             ncol = 1,
+             # making each panel get its own y range
+             scales = "free_y") +
   labs(
+    # adding a graph title 
     title = "Top 5 abundant reef fish through time",
+    # naming x axis Time
     x = "Time",
-    y = "Total fish count",
-    color = "Species") + 
-theme_minimal()
-
-
+    # naming y axis Total fish count
+    y = "Total fish count") + 
+  # customizing colors 
+  scale_color_manual(values = c(
+    "Senorita" = "darkgoldenrod2",
+    "Black Surfperch" = "turquoise3",
+    "Blackfish" = "slategray",
+    "White Surfperch" = "seashell3",
+    "Kelp Bass" = "sienna3")) + 
+  # adding custom theme 
+  theme_minimal() + 
+  # removing legend 
+  theme(legend.position = "NONE")
 ```
 
 
