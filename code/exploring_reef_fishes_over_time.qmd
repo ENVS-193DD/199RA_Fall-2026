@@ -26,9 +26,10 @@ fish_clean <- fish |>
   filter(count >= 0) |> 
   # using mutate and lubridate to convert original_date into new date column that can be used to create time series
   mutate(
-    date = ymd(original_date)) |> 
+    date = ymd(original_date),
+    year_month = floor_date(date, unit = "month")) |> 
   # relocating columns to to left to be easier to look at
-  relocate(date, count, common_name, site)
+  relocate(year_month, count, common_name, site)
 ```
 
 ```{r}
@@ -44,7 +45,6 @@ fish_species <- fish_clean |>
   pull()
 # viewing vector 
 fish_species
-
 
 # creating top_species_table 
 top_species_table <- fish_clean |> 
@@ -65,3 +65,37 @@ top_species_vector <- top_species_table |>
   # using pull to extract column as a vector
   pull(common_name)
 ```
+
+```{r}
+fish_ts <- fish_clean |> 
+  filter(common_name %in% top_species_vector) |>
+  mutate(common_name = fct_relevel(
+    common_name,
+    top_species_vector)) |> 
+  group_by(year_month,
+           common_name) |> 
+  summarize(total_count = sum(count)) |> 
+  # ungrouping the data 
+  ungroup() |> 
+    arrange(common_name, year_month)
+```
+
+```{r}
+ggplot(fish_ts, 
+       aes(x = year_month,
+           y = total_count, 
+           color = common_name)) + 
+  geom_line() + 
+  geom_point() + 
+  labs(
+    title = "Top 5 abundant reef fish through time",
+    x = "Time",
+    y = "Total fish count",
+    color = "Species") + 
+theme_minimal()
+
+
+```
+
+
+
