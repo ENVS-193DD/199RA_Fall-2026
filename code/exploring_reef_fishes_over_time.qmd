@@ -12,9 +12,11 @@ library(tidyverse) # general use
 library(janitor) # cleaning data 
 library(here) # data organization 
 library(lubridate) # date and time 
+library(naniar)
 
 fish <- read.csv(here("data", 
-                      "Monthly_Fish_All_Years.csv"))
+                      "annual_all_species_fish.csv"),
+                 na = "-99999")
 ```
 
 ```{r}
@@ -24,17 +26,17 @@ fish <- read.csv(here("data",
 fish_clean <- fish |> 
   # cleaning the names
   clean_names() |> 
+  filter(group == "FISH") |> 
   # renaming the date column to original_date
   rename(original_date = date) |> 
-  # filtering to remove the no count data, -99999
-  filter(count >= 0) |> 
+  drop_na(dry_gm2) |> 
   # using mutate and lubridate to convert original_date 
   # into new date column that can be used to create time series
   mutate(
     date = ymd(original_date),
     year_month = floor_date(date, unit = "month")) |> 
   # relocating columns to to left to be easier to look at
-  relocate(year_month, count, common_name, site)
+  relocate(year_month, dry_gm2, common_name, site)
 ```
 
 ```{r}
@@ -48,18 +50,33 @@ top_species_table <- fish_clean |>
   group_by(common_name) |>  
   # summarize to make one row per species 
   # sum to get the total fish count of each species
-  summarize(total_count = sum(count)) |> 
+  summarize(total_dry_gm2 = sum(dry_gm2)) |>
   # ungrouping the data 
   ungroup() |> 
   # ranking from most to least abundant 
-  arrange(desc(total_count)) |> 
+  arrange(desc(total_dry_gm2)) |> 
   # selecting top 5 species 
-  slice_head(n = 5)
+  slice_head(n = 5) 
 
 # creating top_species_vector
 top_species_vector <- top_species_table |> 
   # using pull to extract column as a vector
   pull(common_name)
+```
+
+```{r}
+#| label: checking-missing-data
+# looking at fish_clean
+fish |> 
+  clean_names() |> 
+  # filter for fish
+  filter(group == "FISH") |> 
+  # filter for top species 
+  filter(common_name %in% top_species_vector) |> 
+  # selecting for dry mass
+  select(dry_gm2) |> 
+  # using gg_miss_var to check for "na" data
+  gg_miss_var() 
 ```
 
 ```{r}
@@ -79,8 +96,8 @@ fish_ts <- fish_clean |>
   group_by(year_month,
            common_name) |> 
   # summarize to make one row per month 
-  # sum to get the total fish count of each species
-  summarize(total_count = sum(count)) |> 
+  # sum to get the mean dry mass for each species 
+  summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
   # ungrouping the data 
   ungroup() |> 
   # arranging by most abundant species and by date
@@ -96,7 +113,7 @@ ggplot(fish_ts,
        # x-axis: time
        aes(x = year_month,
            # y-axis: abundance
-           y = total_count, 
+           y = mean_dry_gm2, 
            # coloring by species
            color = common_name)) + 
   # first layer: geom_line
@@ -106,23 +123,21 @@ ggplot(fish_ts,
   # faceting by species
   facet_wrap(~ common_name,
              # putting into one column 
-             ncol = 1,
-             # making each panel get its own y range
-             scales = "free_y") +
+             ncol = 1) +
   labs(
     # adding a graph title 
     title = "Top 5 abundant reef fish through time",
     # naming x axis Time
     x = "Time",
     # naming y axis Total fish count
-    y = "Total fish count") + 
+    y = "Total fish dry mass") + 
   # customizing colors 
   scale_color_manual(values = c(
-    "Senorita" = "darkgoldenrod2",
-    "Black Surfperch" = "turquoise3",
-    "Blackfish" = "slategray",
-    "White Surfperch" = "seashell3",
-    "Kelp Bass" = "sienna3")) + 
+    "Painted Greenling" = "sienna2",
+    "Blackeye Goby" = "goldenrod2",
+    "Lavender Sculpin" = "plum",
+    "Unidentified Sculpin Spp" = "coral1",
+    "Speckled Sanddab" = "seashell3")) + 
   # adding custom theme 
   theme_minimal() + 
   # removing legend 
