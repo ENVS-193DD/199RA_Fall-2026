@@ -14,7 +14,7 @@ library(tidyverse) # general use
 library(janitor) # cleaning data 
 library(here) # data organization 
 library(lubridate) # date and time 
-library(naniar)
+library(naniar) # to use gg_miss_var
 
 # reading in data set
 fish <- read.csv(here("data", 
@@ -40,9 +40,9 @@ fish_clean <- fish |>
   # into new date column that can be used to create time series
   mutate(
     date = ymd(original_date),
-    year_month = floor_date(date, unit = "month")) |> 
+    start_of_year = floor_date(date, unit = "year")) |> 
   # relocating columns to to left to be easier to look at
-  relocate(year_month, dry_gm2, common_name, site)
+  relocate(start_of_year, dry_gm2, common_name, site)
 ```
 
 ### Common Manipulations: rename() & relocate()
@@ -68,7 +68,7 @@ Lubridate is a package that is used to help make working with dates and times ea
 In this data set: 
 
 * ymd() was used to turn the original dates into a version of dates that R can better recognize and put it in a year day month format
-* floor_date() takes the new "date" column and rounds each date down to the first of the month. This allows for the mean dry mass by month to later to explored in the time series. 
+* floor_date() takes the new "date" column and rounds each date down to the first of the year This allows for the mean dry mass by year to later to explored in the time series. 
 
 ### Other Functions Used
 
@@ -127,7 +127,7 @@ In this data set: pull() was used to extract the top species names from the top_
 
 ```{r}
 #| label: checking-missing-data
-# looking at fish_clean
+# looking at fish 
 fish |> 
   clean_names() |> 
   # filter for fish
@@ -135,10 +135,18 @@ fish |>
   # filter for top species 
   filter(common_name %in% top_species_vector) |> 
   # selecting for dry mass
-  select(dry_gm2) |> 
+  select(dry_gm2, common_name) |> 
   # using gg_miss_var to check for "na" data
-  gg_miss_var() 
+  gg_miss_var(facet = common_name)
 ```
+
+### gg_miss_var (naniar package)
+
+The function gg_miss_var allows you to visualize missing data from columns and does this through creating a ggplot showing the number of missing values for each variable selected. 
+
+In this data set: gg_miss_var() is used by selecting for the desired variables, dry_gm2 and common_name, and then faceting by common_name to show panels for each of the top_species_vector and how much dry_gm2 data is missing. 
+
+What this means: Each of the top 5 species are indicated to have 10 missing dry_gm2 data. This will be kept in mind through visualization and the following analysis. 
 
 ## Preparing Data for Timeseries
 
@@ -156,7 +164,7 @@ fish_ts <- fish_clean |>
     common_name,
     top_species_vector)) |> 
   # grouping data by date and species
-  group_by(year_month,
+  group_by(start_of_year,
            common_name) |> 
   # summarize to make one row per month 
   # sum to get the mean dry mass for each species 
@@ -164,10 +172,10 @@ fish_ts <- fish_clean |>
   # ungrouping the data 
   ungroup() |> 
   # arranging by most abundant species and by date
-  arrange(common_name, year_month)
+  arrange(common_name, start_of_year)
 ```
 
-## Top 5 Fish Species Timeseries
+## Top 5 Fish Species Time Series
 
 ```{r}
 #| label: monthly-fish-visualization
@@ -176,7 +184,7 @@ fish_ts <- fish_clean |>
 # base plot
 ggplot(fish_ts, 
        # x-axis: time
-       aes(x = year_month,
+       aes(x = start_of_year,
            # y-axis: abundance
            y = mean_dry_gm2, 
            # coloring by species
@@ -189,13 +197,15 @@ ggplot(fish_ts,
   facet_wrap(~ common_name,
              # putting into one column 
              ncol = 1) +
+  scale_x_date(date_breaks = "3 years", 
+               date_labels = "%Y") + 
   labs(
     # adding a graph title 
-    title = "Top 5 Abundant Reef Fish Through Time",
+    title = "Top 5 Abundant Fish Through Time",
     # naming x axis Time
-    x = "Time (months)",
+    x = "Time (years)",
     # naming y axis Total fish count
-    y = "Mean fish dry mass (g/m^2)") + 
+    y = "Mean dry biomass (g/m^2)") + 
   # customizing colors 
   scale_color_manual(values = c(
     "California Sheephead" = "deeppink1",
@@ -209,6 +219,15 @@ ggplot(fish_ts,
   theme(legend.position = "NONE")
 ```
 
+This time series shows the mean dry biomass (g/m^2^) from 2000 to 2026 for the five most abundant fish species: the California sheephead, bat ray, kelp bass, opaleye, and broadnose sevengill shark. 
+
+* **California sheephead:** stable populations at  approximately 1-3g/m^2^ through 2018 where a general increase is seen to approximately 7.5g/m^2^ with fluctuations following while staying at elevated levels. 
+* **Bat ray:** highly variable with very large peaks in 2007 (approximately 17.5g/m^2^) and in 2020 (approximately 10 g/m^2^). Several years have 0g/m^2^ also seen after spikes, with steady numbers at approximately 5g/m^2^ starting in 2024
+* **Kelp bass:** gradual increase from about 1 to 5g/m^2^, with a dip in 2022 and 2025, followed by a high value in 2026 (10g/m^2^)
+* **Opaleye:** relatively stable populations between 0-4g/m^2^ with an increase in 2026 (approximately 6g/m^2^)
+* **Broadnose sevengill shark:** zero dry biomass recorded from 2000-2019 with rising values in recent years and a notable peak in 2025 at 10g/m^2^
+
+These rises and falls in populations may be tied to ocean temperature shifts. Evaluating temperatures seen through time along with the top abundant species may bring ecological insight into how increasing ocean temperatures are impacting abundant species. Additionally, these changes may have a cascade effect through kelp forest food webs. For instance, tracking California sheephead, urchin, and kelp mean dry biomass (g/m^2^) may bring insight to how top-down predation from California sheephead may impact these other species. 
 
 
 
