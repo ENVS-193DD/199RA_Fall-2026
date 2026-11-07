@@ -1,7 +1,9 @@
 ---
 title: "Fish Abundance Over Time"
+subtitle: "Exploring common manipulations, working with dates and time, arrange(), and visualizing missing data"
 format: pdf
 ---
+## Set Up
 
 ```{r}
 #| label: loading-in-packages-and-data
@@ -14,10 +16,14 @@ library(here) # data organization
 library(lubridate) # date and time 
 library(naniar)
 
+# reading in data set
 fish <- read.csv(here("data", 
                       "annual_all_species_fish.csv"),
+                 # changing -99999 values to be na
                  na = "-99999")
 ```
+
+## Cleaning Data
 
 ```{r}
 #| label: transforming-data-frame
@@ -39,6 +45,38 @@ fish_clean <- fish |>
   relocate(year_month, dry_gm2, common_name, site)
 ```
 
+### Common Manipulations: rename() & relocate()
+
+#### Rename (function in dplyr) 
+
+The rename() function allows you to change the names of values for new ones.
+
+In this data set: rename() was used to change the date column to be named original_date. This was useful so a different date column could be created through mutate, and date was the preferred column name.
+
+### Relocate (function in dplyr) 
+
+The relocate function allows for columns positioning in a data set to be changed. Relocate automatically pulls columns to the left, but can be changed using .before and .after. 
+
+In this data set: relocate() was utilized to pull columns created by mutate, which go to the very right side of data, to the left to be easier viewed along with other desired columns
+
+### Working with Dates and Time
+
+#### Utilizing lubridate package
+
+Lubridate is a package that is used to help make working with dates and times easier. 
+
+In this data set: 
+
+* ymd() was used to turn the original dates into a version of dates that R can better recognize and put it in a year day month format
+* floor_date() takes the new "date" column and rounds each date down to the first of the month. This allows for the mean dry mass by month to later to explored in the time series. 
+
+### Other Functions Used
+
+* clean_names(): used to simplify the column names from the original data file
+* drop_na(): used to drop missing values from data to better prepare for summarize function use
+
+## Exploring Data 
+
 ```{r}
 #| label: exploring-fish-by-abundance
 #| message: false
@@ -49,7 +87,7 @@ top_species_table <- fish_clean |>
   # grouping by species 
   group_by(common_name) |>  
   # summarize to make one row per species 
-  # sum to get the total fish count of each species
+  # sum to get the total dry biomass of each species
   summarize(total_dry_gm2 = sum(dry_gm2)) |>
   # ungrouping the data 
   ungroup() |> 
@@ -63,6 +101,29 @@ top_species_vector <- top_species_table |>
   # using pull to extract column as a vector
   pull(common_name)
 ```
+
+### Arrange (function in dpylr) 
+
+The arrange function allows for rows of a data frame to be ordered based on the values of specific columns, and can be done in either a descending or ascending order.
+
+In this data set: arrange() is used to put the specified value, total_dry_gm2, in descending order. This was utilized to identify the top 5 abundant fish species from the data. 
+
+### Common Manipulations: pull()
+
+#### Pull (function in dpylr)
+
+Pull extracts a single column from a data set and turns it into a plain vector. 
+
+In this data set: pull() was used to extract the top species names from the top_species_table. This later allowed for this vector to be utilized when visualizing missing data and for preparing data for the time series. 
+
+### Other Functions Used 
+
+* group_by(): utilized to specify grouping by common_name for the summarize function
+* summarize(): used to sum the dry_gm2 data for each species, and collapses data into one row per species
+* ungroup(): undoes the grouping function
+* slice_head(n=5): utilized to keep the first 5 rows, which is the 5 most abundant species 
+
+## Visualizing Missing Data
 
 ```{r}
 #| label: checking-missing-data
@@ -78,6 +139,8 @@ fish |>
   # using gg_miss_var to check for "na" data
   gg_miss_var() 
 ```
+
+## Preparing Data for Timeseries
 
 ```{r}
 #| label: visualization-prep
@@ -104,6 +167,8 @@ fish_ts <- fish_clean |>
   arrange(common_name, year_month)
 ```
 
+## Top 5 Fish Species Timeseries
+
 ```{r}
 #| label: monthly-fish-visualization
 #| fig-width: 7
@@ -126,23 +191,24 @@ ggplot(fish_ts,
              ncol = 1) +
   labs(
     # adding a graph title 
-    title = "Top 5 abundant reef fish through time",
+    title = "Top 5 Abundant Reef Fish Through Time",
     # naming x axis Time
-    x = "Time",
+    x = "Time (months)",
     # naming y axis Total fish count
-    y = "Total fish dry mass") + 
+    y = "Mean fish dry mass (g/m^2)") + 
   # customizing colors 
   scale_color_manual(values = c(
-    "Painted Greenling" = "sienna2",
-    "Blackeye Goby" = "goldenrod2",
-    "Lavender Sculpin" = "plum",
-    "Unidentified Sculpin Spp" = "coral1",
-    "Speckled Sanddab" = "seashell3")) + 
+    "California Sheephead" = "deeppink1",
+    "Bat Ray" = "slategray",
+    "Kelp Bass" = "goldenrod2",
+    "Opaleye" = "darkseagreen3",
+    "Broadnose sevengill shark" = "dodgerblue4")) + 
   # adding custom theme 
   theme_minimal() + 
   # removing legend 
   theme(legend.position = "NONE")
 ```
+
 
 
 

@@ -1,6 +1,6 @@
 ---
 title: "Urchin Foraging Rates on Kelp at Different Urchin Densities"
-subtitle: "Exploring mutate and distinct functions in RStudio through investigating urchin laboratory data from the SBC LTER."
+subtitle: "Exploring mutate function in RStudio through investigating urchin laboratory data from the SBC LTER."
 author: "Elise LaFreniere"
 format: pdf
 ---
@@ -21,7 +21,7 @@ library(here) # data organization
 urchin <- read.csv(here("data","mesocosm_density_data.csv"))
 ```
 
-## Cleaning Data & Using Mutate and Distinct Functions
+## Cleaning Data & Using Mutate Functions
 
 ```{r}
 #| label: urchin-data-cleaning
@@ -57,12 +57,11 @@ The mutate function allows for new columns to be created that are *functions* of
 
 In this data set, mutate is used to:
 
-* Modify data in the p_r data (which is renamed to species) column to indicate the specific species being looked at instead of the shorthand notation used within the study. 
+* Modify data in the p_r data (which is renamed to species) column to indicate the specific species being looked at instead of the shorthand notation used within the study.
 * Create the rate_per_urchin column which is a function of existing variables (kelp_in, kelp_out, total_time, and urchin_density). This new column allows for the rate of kelp consumption over time per individual urchin to be able to be examined. 
 * Create the kelp_consumption_rate column which is a function of existing variables ((kelp_in, kelp_out, total_time). This new column calculates the rate of kelp consumption over time. 
 
 ### Other transformations done to the data frame
-
 * clean_names(): used to simplify the column names from the original data file
 * filter(): used to remove rows where mortality was seen within an urchin population in a tank
 * re_name(): used to rename "p_r" column to "species" for better clarity
