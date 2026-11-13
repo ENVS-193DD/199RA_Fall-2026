@@ -22,6 +22,14 @@ bottom_temp <- read.csv(here("data", "Bottom_temp_all_years.csv"))
 
 ```{r}
 biomass_clean <- biomass |> 
-  clean_names()
+  clean_names() |>  
+  filter(common_name %in% c("California Sheephead", "Red Urchin", "Purple Urchin", "Kelp")) |> 
+  relocate(common_name, date, site)
 
+bottom_temp_clean <- bottom_temp |> 
+  clean_names() |>  
+  select(site, date_local, temp_c)
+```
+
+```{r}
 ```
