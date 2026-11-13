@@ -166,7 +166,7 @@ fish_ts <- fish_clean |>
   # grouping data by date and species
   group_by(start_of_year,
            common_name) |> 
-  # summarize to make one row per month 
+  # summarize to make one row per year 
   # sum to get the mean dry mass for each species 
   summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
   # ungrouping the data 
@@ -197,6 +197,7 @@ ggplot(fish_ts,
   facet_wrap(~ common_name,
              # putting into one column 
              ncol = 1) +
+  # customizing x axis year labels for every 3 years
   scale_x_date(date_breaks = "3 years", 
                date_labels = "%Y") + 
   labs(

@@ -3,6 +3,8 @@ title: "Infographic Visualizations"
 format: pdf
 ---
 
+## Set Up
+
 ```{r}
 library(tidyverse) # general use
 library(janitor) # cleaning data 
@@ -10,102 +12,281 @@ library(here) # data organization
 library(lubridate) # date and time 
 library(naniar) # to use gg_miss_var
 
+# reading in biomass data
 biomass <- read.csv(here("data", 
                       "annual_all_species_fish.csv"),
                  # changing -99999 values to be na
                  na = "-99999")
-
+# reading in sea surface temperature data for if I want to use it
 sst <- read.csv(here("data", "SST_update2023.csv"))
 
-bottom_temp <- read.csv(here("data", "Bottom_temp_all_years.csv"))
+# reading in bottom temperature data 
+bottom_temp <- read.csv(here("data", "Bottom_temp_all_years.csv"),
+                        # changing -99999 values to be na
+                        na = "-99999")
+```
+
+### Visualize Missing Data 
+
+```{r}
+#| label: visualizing-missing-biomass-data
+
+# looking at the missing biomass data
+biomass |> 
+  # cleaning names
+  clean_names() |> 
+  # filter for desired species
+  filter(common_name %in% c("California Sheephead", 
+                            "Red Urchin", 
+                            "Purple Urchin", 
+                            "Giant Kelp")) |>
+  # selecting for dry mass and common name
+  select(dry_gm2, common_name) |> 
+  # using gg_miss_var to check for "na" data for species
+  gg_miss_var(facet = common_name)
 ```
 
 ```{r}
+#| label: visualizing-missing-biomass-data
+
+# looking at the missing temperature data
+bottom_temp |> 
+  clean_names() |> 
+  # filter for fish
+  select(temp_c) |> 
+  # using gg_miss_var to check for "na" data
+  gg_miss_var()
+```
+
+### Time Series with full_join
+
+#### Clean Data 
+
+```{r}
+#| label: cleaning-data
+
+# BIOMASS
+
+# creating new object, biomass_clean
 biomass_clean <- biomass |> 
+  # cleaning names
   clean_names() |>  
-  filter(common_name %in% c("California Sheephead", "Red Urchin", "Purple Urchin", "Giant Kelp")) |> 
+  # filtering for desired species 
+  filter(common_name %in% c("California Sheephead", 
+                            "Red Urchin", 
+                            "Purple Urchin", 
+                            "Giant Kelp")) |> 
+  # renaming date
   rename(original_date = date) |>  
+  # using mutate and lubridate to convert original_date 
+  # into new date column that can be used to create time series
   mutate(
     date = ymd(original_date),
-    start_of_year = floor_date(date, unit = "year")) |>
+    year = floor_date(date, unit = "year")) |>
+  # dropping na values to use summarize
   drop_na(dry_gm2) |> 
-  group_by(start_of_year,
+  # grouping data by year and species
+  group_by(year,
            common_name) |> 
+  # using summarize to get the mean dry biomass and make one row per year
   summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
+  # ungrouping data 
   ungroup() |> 
-  relocate(common_name, start_of_year, mean_dry_gm2)
+  # relocating columns to left to look at
+  relocate(common_name, year, mean_dry_gm2)
 
+# TEMPERATURE
+
+# creating new object to look at temperature data
 bottom_temp_clean <- bottom_temp |> 
+  # cleaning names
   clean_names() |>  
+  # using mutate and lubridate to convert date_local
+  # into new date column that can be used to create time series
   mutate(
     date = ymd(date_local),
-    start_of_year = floor_date(date, unit = "year")) |>
-  group_by(start_of_year) |> 
-  drop_na(temp_c) |> 
+    year = floor_date(date, unit = "year")) |>
+  # grouping data by year
+  group_by(year) |> 
+  # using summarize to get mean temp and make one row per year
   summarize(mean_temp_c = mean(temp_c)) |> 
   # ungrouping the data 
   ungroup() |> 
-  relocate(start_of_year, mean_temp_c) 
+  # relocating desired columns to left side
+  relocate(year, mean_temp_c) 
 ```
 
+#### Joining Datasets
+
+
 ```{r}
+#| label: joining-datasets
+
+# creating new object to join datasets
 biomass_bottom_temp <- full_join(
   biomass_clean,
   bottom_temp_clean,
-  by = c("start_of_year"))
+  # joining datasets by year
+  by = c("year"))
 ```
 
-```{r}
-#| label: visualizing-missing-data
-
-biomass_bottom_temp |> 
-  gg_miss_var(facet = common_name)
-
-```
-
+#### Looking at CA Sheephead, Giant Kelp, and Red and Purple Urchins through time
 
 ```{r}
-# species mean dry biomass  timeseries 
-ggplot(biomass_clean) + 
-  aes(x = start_of_year,
-           y = mean_dry_gm2, 
-           color = common_name) + 
+#| label: visualizing-species-abundance-through-time
+
+# species mean dry biomass timeseries NO FACET
+
+# base layer: ggplot
+ggplot(biomass_bottom_temp) + 
+  # year on x axis, biomass on y axis, coloring by species
+  aes(x = year,
+      y = mean_dry_gm2, 
+      color = common_name) + 
+  # first layer: geom_line
   geom_line() + 
+  # second layer: geom_point
   geom_point(size = 0.5) + 
+    # customizing x axis year labels for every 3 years
   scale_x_date(date_breaks = "3 years", 
                date_labels = "%Y") + 
+  # customizing colors
   scale_color_manual(values = c(
     "Giant Kelp" = "seagreen",
     "California Sheephead" = "dodgerblue4",
     "Purple Urchin" = "purple",
     "Red Urchin" = "firebrick")) + 
+  # using labs to label axes
   labs(
     x = "Time (years)",
     y = "Mean dry biomass (g/m^2)") +
-   theme_minimal() +
+  # adding custom theme 
+  theme_minimal() +
+  # removing axis
   theme(legend.position = "NONE")
 ```
 
 ```{r}
+# species mean dry biomass timeseries FACET
+
+# base layer: ggplot
+ggplot(biomass_bottom_temp) + 
+  # year on x axis, biomass on y axis, coloring by species
+  aes(x = year,
+      y = mean_dry_gm2, 
+      color = common_name) + 
+  # first layer: geom_line
+  geom_line() + 
+  # second layer: geom_point
+  geom_point(size = 0.5) + 
+  # faceting by species
+  facet_wrap(~ common_name,
+             # letting y axis adjust for each species 
+             scales = "free_y", 
+             # putting in one column for better viewing 
+             ncol = 1) + 
+    # customizing x axis year labels for every 3 years
+  scale_x_date(date_breaks = "3 years", 
+               date_labels = "%Y") + 
+  # customizing colors
+  scale_color_manual(values = c(
+    "Giant Kelp" = "seagreen",
+    "California Sheephead" = "dodgerblue4",
+    "Purple Urchin" = "purple",
+    "Red Urchin" = "firebrick")) + 
+  # using labs to label axes
+  labs(
+    x = "Time (years)",
+    y = "Mean dry biomass (g/m^2)") +
+  # adding custom theme 
+  theme_minimal() +
+  # removing axis
+  theme(legend.position = "NONE")
+```
+#### Looking at temperature (celsius) through time 
+
+```{r}
 # time series mean temperature 
 
-ggplot(bottom_temp_clean) + 
-  aes(x = start_of_year,
-           # y-axis: abundance
-           y = mean_temp_c)+ 
+# base layer: ggplot
+ggplot(biomass_bottom_temp) + 
+  # x axis year, y axis mean temperature
+  aes(x = year,
+      y = mean_temp_c) + 
   # first layer: geom_line
+  # custom color for line
   geom_line(color = "sienna2") + 
   # second layer: geom_point
+  # custom color and adjusting size
   geom_point(
     color = "sienna2",
     size = 0.5) + 
-  # faceting by species
+  # customizing x axis year labels for every 3 years
   scale_x_date(date_breaks = "3 years", 
                date_labels = "%Y") + 
-   labs(
+  # using labs to label x and y axis 
+  labs(
     x = "Time (years)",
     y = "Temperature (celcius)") +
+  # custom theme
   theme_minimal()
+```
 
+### CA Sheephead versus purple urchin abundance 
 
+#### Clean data
+
+```{r}
+#| label: cleaning-urchin-and-sheephead-data
+
+# creating new object to look compare sheephead and urchin biomass
+sheephead_and_urchin <- biomass |> 
+  # clean names
+  clean_names() |>  
+  # filtering by urchin and sheephead
+  filter(common_name %in% c("California Sheephead", 
+                            "Purple Urchin")) |> 
+  # renaming date for lubridate adjustment
+  rename(original_date = date) |>  
+  # using mutate and lubridate to convert original_date
+  # into new date column to look at by year
+  mutate(
+    date = ymd(original_date),
+    year = floor_date(date, unit = "year")) |>
+  # dropping missing dry_gm2 values
+  drop_na(dry_gm2) |> 
+  # grouping by year and common_name
+  group_by(year,
+           common_name) |> 
+  # using summarize to find mean dry_gm2 and make one row per year
+  summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
+  # ungrouping
+  ungroup() |> 
+  # using pivot_wider to look at CA sheephead and urchin as columns with values from mean_dry_gm2
+  pivot_wider(
+    names_from = common_name,
+    values_from = mean_dry_gm2) |> 
+  # cleaning names
+  clean_names()
+```
+
+#### CA Sheephead vs Purple Urchin abundance
+
+```{r}
+#| label: visualizing-urchin-and-sheephead-data
+
+# base layer: ggplot
+ggplot(sheephead_and_urchin) + 
+  # looking at CA sheephead biomass on x axis, purple urchin on y
+  aes(x = california_sheephead,
+           # y-axis: abundance
+           y = purple_urchin) + 
+  # second layer: geom_point
+  geom_point() + 
+  # using labs to label axes
+  labs(
+    x = "California sheephead mean dry biomass (g/m^2)",
+    y = "Purple urchin mean dry biomass (g/m^2)") +
+  # custom theme
+  theme_minimal()
 ```
