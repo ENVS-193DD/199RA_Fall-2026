@@ -23,13 +23,89 @@ bottom_temp <- read.csv(here("data", "Bottom_temp_all_years.csv"))
 ```{r}
 biomass_clean <- biomass |> 
   clean_names() |>  
-  filter(common_name %in% c("California Sheephead", "Red Urchin", "Purple Urchin", "Kelp")) |> 
-  relocate(common_name, date, site)
+  filter(common_name %in% c("California Sheephead", "Red Urchin", "Purple Urchin", "Giant Kelp")) |> 
+  rename(original_date = date) |>  
+  mutate(
+    date = ymd(original_date),
+    start_of_year = floor_date(date, unit = "year")) |>
+  drop_na(dry_gm2) |> 
+  group_by(start_of_year,
+           common_name) |> 
+  summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
+  ungroup() |> 
+  relocate(common_name, start_of_year, mean_dry_gm2)
 
 bottom_temp_clean <- bottom_temp |> 
   clean_names() |>  
-  select(site, date_local, temp_c)
+  mutate(
+    date = ymd(date_local),
+    start_of_year = floor_date(date, unit = "year")) |>
+  group_by(start_of_year) |> 
+  drop_na(temp_c) |> 
+  summarize(mean_temp_c = mean(temp_c)) |> 
+  # ungrouping the data 
+  ungroup() |> 
+  relocate(start_of_year, mean_temp_c) 
 ```
 
 ```{r}
+biomass_bottom_temp <- full_join(
+  biomass_clean,
+  bottom_temp_clean,
+  by = c("start_of_year"))
+```
+
+```{r}
+#| label: visualizing-missing-data
+
+biomass_bottom_temp |> 
+  gg_miss_var(facet = common_name)
+
+```
+
+
+```{r}
+# species mean dry biomass  timeseries 
+ggplot(biomass_clean) + 
+  aes(x = start_of_year,
+           y = mean_dry_gm2, 
+           color = common_name) + 
+  geom_line() + 
+  geom_point(size = 0.5) + 
+  scale_x_date(date_breaks = "3 years", 
+               date_labels = "%Y") + 
+  scale_color_manual(values = c(
+    "Giant Kelp" = "seagreen",
+    "California Sheephead" = "dodgerblue4",
+    "Purple Urchin" = "purple",
+    "Red Urchin" = "firebrick")) + 
+  labs(
+    x = "Time (years)",
+    y = "Mean dry biomass (g/m^2)") +
+   theme_minimal() +
+  theme(legend.position = "NONE")
+```
+
+```{r}
+# time series mean temperature 
+
+ggplot(bottom_temp_clean) + 
+  aes(x = start_of_year,
+           # y-axis: abundance
+           y = mean_temp_c)+ 
+  # first layer: geom_line
+  geom_line(color = "sienna2") + 
+  # second layer: geom_point
+  geom_point(
+    color = "sienna2",
+    size = 0.5) + 
+  # faceting by species
+  scale_x_date(date_breaks = "3 years", 
+               date_labels = "%Y") + 
+   labs(
+    x = "Time (years)",
+    y = "Temperature (celcius)") +
+  theme_minimal()
+
+
 ```
