@@ -1,0 +1,27 @@
+---
+title: "Infographic Visualizations"
+format: pdf
+---
+
+```{r}
+library(tidyverse) # general use
+library(janitor) # cleaning data 
+library(here) # data organization 
+library(lubridate) # date and time 
+library(naniar) # to use gg_miss_var
+
+biomass <- read.csv(here("data", 
+                      "annual_all_species_fish.csv"),
+                 # changing -99999 values to be na
+                 na = "-99999")
+
+sst <- read.csv(here("data", "SST_update2023.csv"))
+
+bottom_temp <- read.csv(here("data", "Bottom_temp_all_years.csv"))
+```
+
+```{r}
+biomass_clean <- biomass |> 
+  clean_names()
+
+```
