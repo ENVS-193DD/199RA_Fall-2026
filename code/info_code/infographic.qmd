@@ -11,6 +11,7 @@ library(janitor) # cleaning data
 library(here) # data organization 
 library(lubridate) # date and time 
 library(naniar) # to use gg_miss_var
+library(zoo) # to identify warming period 
 
 # reading in biomass data
 biomass <- read.csv(here("data", 
@@ -18,7 +19,8 @@ biomass <- read.csv(here("data",
                  # changing -99999 values to be na
                  na = "-99999")
 # reading in sea surface temperature data for if I want to use it
-sst <- read.csv(here("data", "SST_update2023.csv"))
+sst <- read.csv(here("data", "SST_update2023.csv"),
+                na = "-99999")
 
 # reading in bottom temperature data 
 bottom_temp <- read.csv(here("data", "Bottom_temp_all_years.csv"),
@@ -47,13 +49,25 @@ biomass |>
 ```
 
 ```{r}
-#| label: visualizing-missing-biomass-data
+#| label: visualizing-missing-bottom-temp-data
 
 # looking at the missing temperature data
 bottom_temp |> 
   clean_names() |> 
   # filter for fish
   select(temp_c) |> 
+  # using gg_miss_var to check for "na" data
+  gg_miss_var()
+```
+
+```{r}
+#| label: visualizing-missing-bottom-temp-data
+
+# looking at the missing temperature data
+sst |> 
+  clean_names() |> 
+  # filter for fish
+  select(temp) |> 
   # using gg_miss_var to check for "na" data
   gg_miss_var()
 ```
@@ -95,9 +109,9 @@ biomass_clean <- biomass |>
   # relocating columns to left to look at
   relocate(common_name, year, mean_dry_gm2)
 
-# TEMPERATURE
+# BOTTOM TEMPERATURE
 
-# creating new object to look at temperature data
+# creating new object to look at bottom temp data
 bottom_temp_clean <- bottom_temp |> 
   # cleaning names
   clean_names() |>  
@@ -109,11 +123,31 @@ bottom_temp_clean <- bottom_temp |>
   # grouping data by year
   group_by(year) |> 
   # using summarize to get mean temp and make one row per year
-  summarize(mean_temp_c = mean(temp_c)) |> 
+  summarize(mean_bottom_temp = mean(temp_c)) |> 
   # ungrouping the data 
   ungroup() |> 
   # relocating desired columns to left side
-  relocate(year, mean_temp_c) 
+  relocate(year, mean_bottom_temp) 
+
+# SEA SURFACE TEMPERATURE
+
+# creating new object to look at sea surface temp data
+sst_clean <- sst |> 
+  # cleaning names
+  clean_names() |>  
+  # using mutate and lubridate to convert date_local
+  # into new date column that can be used to create time series
+  mutate(
+    date = ymd(date),
+    year = floor_date(date, unit = "year")) |>
+  # grouping data by year
+  group_by(year) |> 
+  # using summarize to get mean temp and make one row per year
+  summarize(mean_sst_temp = mean(temp)) |> 
+  # ungrouping the data 
+  ungroup() |> 
+  # relocating desired columns to left side
+  relocate(year, mean_sst_temp) 
 ```
 
 #### Joining Datasets
@@ -123,11 +157,16 @@ bottom_temp_clean <- bottom_temp |>
 #| label: joining-datasets
 
 # creating new object to join datasets
-biomass_bottom_temp <- full_join(
+biomass_and_bottom_temp <- full_join(
   biomass_clean,
   bottom_temp_clean,
   # joining datasets by year
   by = c("year"))
+
+biomass_all_temps <- full_join(
+  biomass_and_bottom_temp,
+  sst_clean,
+  by =c("year"))
 ```
 
 #### Looking at CA Sheephead, Giant Kelp, and Red and Purple Urchins through time
@@ -138,7 +177,7 @@ biomass_bottom_temp <- full_join(
 # species mean dry biomass timeseries NO FACET
 
 # base layer: ggplot
-ggplot(biomass_bottom_temp) + 
+ggplot(biomass_and_bottom_temp) + 
   # year on x axis, biomass on y axis, coloring by species
   aes(x = year,
       y = mean_dry_gm2, 
@@ -170,7 +209,7 @@ ggplot(biomass_bottom_temp) +
 # species mean dry biomass timeseries FACET
 
 # base layer: ggplot
-ggplot(biomass_bottom_temp) + 
+ggplot(biomass_and_bottom_temp) + 
   # year on x axis, biomass on y axis, coloring by species
   aes(x = year,
       y = mean_dry_gm2, 
@@ -203,16 +242,19 @@ ggplot(biomass_bottom_temp) +
   # removing axis
   theme(legend.position = "NONE")
 ```
+
 #### Looking at temperature (celsius) through time 
 
+##### Mean bottom temperature time series
+
 ```{r}
-# time series mean temperature 
+#| label: time-series-mean-bottom-temperature 
 
 # base layer: ggplot
-ggplot(biomass_bottom_temp) + 
+ggplot(biomass_and_bottom_temp) + 
   # x axis year, y axis mean temperature
   aes(x = year,
-      y = mean_temp_c) + 
+      y = mean_bottom_temp) + 
   # first layer: geom_line
   # custom color for line
   geom_line(color = "sienna2") + 
@@ -230,6 +272,47 @@ ggplot(biomass_bottom_temp) +
     y = "Temperature (celcius)") +
   # custom theme
   theme_minimal()
+```
+
+##### Looking at mean bottom and SST temperature through time
+
+```{r}
+#| label: time-series-all-temperature 
+
+# base layer: ggplot
+ggplot(biomass_all_temps) + 
+  # x axis year
+  aes(x = year) + 
+  # first layer: geom_line
+  # plotting mean_sst_temp on y axis 
+  geom_line(aes(y = mean_sst_temp),
+            color = "sienna2") + 
+  # second layer: geom_point
+  # plotting mean_bottom_temp on y axis 
+  geom_line(aes(y = mean_bottom_temp),
+            color = "firebrick") + 
+  # customizing x axis year labels for every 5 years
+  scale_x_date(date_breaks = "5 years", 
+               date_labels = "%Y") + 
+  # using labs to label x and y axis 
+  labs(
+    x = "Time (years)",
+    y = "Temperature (celcius)") +
+  # custom theme
+  theme_minimal() 
+```
+
+#### Identifying warming period
+
+```{r}
+#| label: warming-period
+
+
+
+
+
+
+
 ```
 
 ### CA Sheephead versus purple urchin abundance 
