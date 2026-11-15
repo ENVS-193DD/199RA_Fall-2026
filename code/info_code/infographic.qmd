@@ -11,7 +11,6 @@ library(janitor) # cleaning data
 library(here) # data organization 
 library(lubridate) # date and time 
 library(naniar) # to use gg_miss_var
-library(zoo) # to identify warming period 
 
 # reading in biomass data
 biomass <- read.csv(here("data", 
@@ -304,18 +303,7 @@ ggplot(biomass_all_temps) +
 
 #### Identifying warming period
 
-```{r}
-#| label: warming-period
-
-
-
-
-
-
-
-```
-
-### CA Sheephead versus purple urchin abundance 
+### CA Sheephead versus urchin abundance 
 
 #### Clean data
 
@@ -328,7 +316,8 @@ sheephead_and_urchin <- biomass |>
   clean_names() |>  
   # filtering by urchin and sheephead
   filter(common_name %in% c("California Sheephead", 
-                            "Purple Urchin")) |> 
+                            "Purple Urchin", 
+                            "Red Urchin")) |> 
   # renaming date for lubridate adjustment
   rename(original_date = date) |>  
   # using mutate and lubridate to convert original_date
@@ -353,6 +342,28 @@ sheephead_and_urchin <- biomass |>
   clean_names()
 ```
 
+#### CA Sheephead vs Urchin abundance
+
+```{r}
+#| label: visualizing-urchin-and-sheephead-data
+
+# base layer: ggplot
+ggplot(sheephead_and_urchin) + 
+  # looking at CA sheephead biomass on x axis, purple urchin on y
+  aes(x = california_sheephead) + 
+  # second layer: geom_point
+  geom_point(aes(y = purple_urchin),
+             color = "purple") +  
+  geom_point(aes(y = red_urchin),
+             color ="red") + 
+  # using labs to label axes
+  labs(
+    x = "California sheephead mean dry biomass (g/m^2)",
+    y = "Urchin mean dry biomass (g/m^2)") +
+  # custom theme
+  theme_minimal()
+```
+
 #### CA Sheephead vs Purple Urchin abundance
 
 ```{r}
@@ -362,14 +373,109 @@ sheephead_and_urchin <- biomass |>
 ggplot(sheephead_and_urchin) + 
   # looking at CA sheephead biomass on x axis, purple urchin on y
   aes(x = california_sheephead,
-           # y-axis: abundance
-           y = purple_urchin) + 
+      y = purple_urchin) + 
   # second layer: geom_point
-  geom_point() + 
-  # using labs to label axes
+ geom_point() + 
+ # using labs to label axes
   labs(
     x = "California sheephead mean dry biomass (g/m^2)",
     y = "Purple urchin mean dry biomass (g/m^2)") +
   # custom theme
   theme_minimal()
 ```
+
+#### CA Sheephead vs Red Urchin abundance
+
+```{r}
+#| label: visualizing-urchin-and-sheephead-data
+
+# base layer: ggplot
+ggplot(sheephead_and_urchin) + 
+  # looking at CA sheephead biomass on x axis, purple urchin on y
+  aes(x = california_sheephead,
+      y = red_urchin) + 
+  # second layer: geom_point
+ geom_point() + 
+ # using labs to label axes
+  labs(
+    x = "California sheephead mean dry biomass (g/m^2)",
+    y = "Red urchin mean dry biomass (g/m^2)") +
+  # custom theme
+  theme_minimal()
+```
+
+### Urchin vs kelp abundance 
+
+```{r}
+#| label: cleaning-urchin-and-kelp-data
+
+# creating new object to look compare sheephead and urchin biomass
+kelp_and_urchin <- biomass |> 
+  # clean names
+  clean_names() |>  
+  # filtering by urchin and sheephead
+  filter(common_name %in% c("Giant Kelp", 
+                            "Purple Urchin", 
+                            "Red Urchin")) |> 
+  # renaming date for lubridate adjustment
+  rename(original_date = date) |>  
+  # using mutate and lubridate to convert original_date
+  # into new date column to look at by year
+  mutate(
+    date = ymd(original_date),
+    year = floor_date(date, unit = "year")) |>
+  # dropping missing dry_gm2 values
+  drop_na(dry_gm2) |> 
+  # grouping by year and common_name
+  group_by(year,
+           common_name) |> 
+  # using summarize to find mean dry_gm2 and make one row per year
+  summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
+  # ungrouping
+  ungroup() |> 
+  # using pivot_wider to look at CA sheephead and urchin as columns with values from mean_dry_gm2
+  pivot_wider(
+    names_from = common_name,
+    values_from = mean_dry_gm2) |> 
+  # cleaning names
+  clean_names()
+```
+
+
+```{r}
+#| label: visualizing-urchin-and-kelp-data
+
+# base layer: ggplot
+ggplot(kelp_and_urchin) + 
+  # looking at CA sheephead biomass on x axis, purple urchin on y
+  aes(x = giant_kelp,
+      y = red_urchin) + 
+  # second layer: geom_point
+ geom_point() + 
+ # using labs to label axes
+  labs(
+    x = "Giant Kelp mean dry biomass (g/m^2)",
+    y = "Red urchin mean dry biomass (g/m^2)") +
+  # custom theme
+  theme_minimal()
+```
+
+```{r}
+#| label: visualizing-urchin-and-kelp-data
+
+# base layer: ggplot
+ggplot(kelp_and_urchin) + 
+  # looking at CA sheephead biomass on x axis, purple urchin on y
+  aes(x = giant_kelp,
+      y = purple_urchin) + 
+  # second layer: geom_point
+ geom_point() + 
+ # using labs to label axes
+  labs(
+    x = "Giant Kelp mean dry biomass (g/m^2)",
+    y = "Purple urchin mean dry biomass (g/m^2)") +
+  # custom theme
+  theme_minimal()
+```
+
+
