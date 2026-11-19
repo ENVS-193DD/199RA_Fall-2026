@@ -261,6 +261,9 @@ sheephead_and_urchin <- biomass |>
   filter(common_name %in% c("California Sheephead", 
                             "Purple Urchin", 
                             "Red Urchin")) |> 
+  # filtering for Santa Cruz Island Sites
+  filter(site %in% c("SCDI",
+                     "SCTW")) |> 
   # renaming date for lubridate adjustment
   rename(original_date = date) |>  
   # using mutate and lubridate to convert original_date
@@ -360,6 +363,9 @@ kelp_and_urchin <- biomass |>
   filter(common_name %in% c("Giant Kelp", 
                             "Purple Urchin", 
                             "Red Urchin")) |> 
+  # filtering for Santa Cruz Island Sites
+  filter(site %in% c("SCDI",
+                     "SCTW")) |> 
   # renaming date for lubridate adjustment
   rename(original_date = date) |>  
   # using mutate and lubridate to convert original_date
