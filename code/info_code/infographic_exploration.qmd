@@ -37,10 +37,7 @@ biomass_missing <- biomass |>
   filter(common_name %in% c("California Sheephead", 
                             "Red Urchin", 
                             "Purple Urchin", 
-                            "Giant Kelp")) |>
-  # filtering for Santa Cruz Island Sites
-  filter(site %in% c("SCDI",
-                     "SCTW")) |> 
+                            "Giant Kelp")) |> 
   # selecting for dry mass and common name
   select(dry_gm2, common_name, site) |> 
   # using gg_miss_var to check for "na" data for species
@@ -85,9 +82,6 @@ biomass_clean <- biomass |>
                             "Red Urchin", 
                             "Purple Urchin", 
                             "Giant Kelp")) |> 
-  # filtering for Santa Cruz Island Sites
-  filter(site %in% c("SCDI",
-                     "SCTW")) |> 
   # renaming date
   rename(original_date = date) |>  
   # using mutate and lubridate to convert original_date 
@@ -99,13 +93,12 @@ biomass_clean <- biomass |>
   drop_na(dry_gm2) |> 
   # grouping data by year and species
   group_by(year,
-           common_name,
-           site) |> 
+           common_name) |> 
   # using summarize to get the mean dry biomass and make one row per year
   summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
   # ungrouping data 
   ungroup() |> 
-  arrange(site, common_name, year)
+  arrange(common_name, year)
 
 # BOTTOM TEMPERATURE
 
@@ -113,21 +106,18 @@ biomass_clean <- biomass |>
 bottom_temp_clean <- bottom_temp |> 
   # cleaning names
   clean_names() |>
-  # filtering for Santa Cruz Island Sites
-  filter(site %in% c("SCDI",
-                     "SCTW")) |> 
   # using mutate and lubridate to convert date_local
   # into new date column that can be used to create time series
   mutate(
     date = ymd(date_local),
     year = floor_date(date, unit = "year")) |>
   # grouping data by year
-  group_by(year, site) |> 
+  group_by(year) |> 
   # using summarize to get mean temp and make one row per year
   summarize(mean_bottom_temp = mean(temp_c)) |> 
   # ungrouping the data 
   ungroup() |> 
-  arrange(site, year)
+  arrange(year)
 
 ```
 
@@ -142,60 +132,24 @@ biomass_and_bottom_temp <- full_join(
   biomass_clean,
   bottom_temp_clean,
   # joining datasets by year
-  by = c("year",
-         "site"))
+  by = c("year"))
 ```
 
 #### Looking at CA Sheephead, Giant Kelp, and Red and Purple Urchins through time
 
 ```{r}
-#| label: visualizing-species-abundance-through-time
-
-# species mean dry biomass timeseries NO FACET
-
+#| label: biomass-timeseries
 # base layer: ggplot
-ggplot(biomass_and_bottom_temp) + 
-  # year on x axis, biomass on y axis, coloring by species
-  aes(x = year,
-      y = mean_dry_gm2, 
-      color = common_name) + 
-  # first layer: geom_line
-  geom_line() + 
+ggplot(data = biomass_clean,
+       # year on x axis, mean dry biomass on y
+       # coloring by species name
+       mapping = aes(x = year,
+                     y = mean_dry_gm2, 
+                     fill = common_name,
+                     color = common_name)) + 
+  geom_area(alpha = 0.8) + 
   # second layer: geom_point
-  geom_point(size = 0.5) + 
-    # customizing x axis year labels for every 3 years
-  scale_x_date(date_breaks = "3 years", 
-               date_labels = "%Y") + 
-  # customizing colors
-  scale_color_manual(values = c(
-    "Giant Kelp" = "seagreen",
-    "California Sheephead" = "dodgerblue4",
-    "Purple Urchin" = "purple",
-    "Red Urchin" = "firebrick")) + 
-  # using labs to label axes
-  labs(
-    x = "Time (years)",
-    y = "Mean dry biomass (g/m^2)") +
-  # adding custom theme 
-  theme_minimal() +
-  # removing axis
-  theme(legend.position = "NONE")
-```
-
-```{r}
-# species mean dry biomass timeseries FACET
-
-# base layer: ggplot
-ggplot(biomass_clean) + 
-  # year on x axis, biomass on y axis, coloring by species
-  aes(x = year,
-      y = mean_dry_gm2, 
-      color = common_name,
-      linetype = site) + 
-  # first layer: geom_line
   geom_line() + 
-  # second layer: geom_point
-  geom_point(size = 0.5) + 
   # faceting by species
   facet_wrap(~ common_name,
              # letting y axis adjust for each species 
@@ -203,10 +157,15 @@ ggplot(biomass_clean) +
              # putting in one column for better viewing 
              ncol = 1) + 
     # customizing x axis year labels for every 3 years
-  scale_x_date(date_breaks = "3 years", 
+  scale_x_date(date_breaks = "5 years", 
                date_labels = "%Y") + 
   # customizing colors
   scale_color_manual(values = c(
+    "Giant Kelp" = "seagreen",
+    "California Sheephead" = "dodgerblue4",
+    "Purple Urchin" = "purple",
+    "Red Urchin" = "firebrick")) + 
+  scale_fill_manual(values = c(
     "Giant Kelp" = "seagreen",
     "California Sheephead" = "dodgerblue4",
     "Purple Urchin" = "purple",
@@ -216,7 +175,8 @@ ggplot(biomass_clean) +
     x = "Time (years)",
     y = "Mean dry biomass (g/m^2)") +
   # adding custom theme 
-  theme_minimal() 
+  theme_minimal() + 
+  theme(legend.position = "NONE")
 ```
 
 #### Looking at temperature (celsius) through time 
@@ -230,8 +190,7 @@ ggplot(biomass_clean) +
 ggplot(bottom_temp_clean) + 
   # x axis year, y axis mean temperature
   aes(x = year,
-      y = mean_bottom_temp,
-      linetype = site) + 
+      y = mean_bottom_temp) + 
   # first layer: geom_line
   # custom color for line
   geom_line(color = "sienna2") + 
@@ -241,7 +200,7 @@ ggplot(bottom_temp_clean) +
     color = "sienna2",
     size = 0.5) + 
   # customizing x axis year labels for every 3 years
-  scale_x_date(date_breaks = "3 years", 
+  scale_x_date(date_breaks = "5 years", 
                date_labels = "%Y") + 
   # using labs to label x and y axis 
   labs(
@@ -250,8 +209,6 @@ ggplot(bottom_temp_clean) +
   # custom theme
   theme_minimal()
 ```
-
-##### Looking at mean bottom and SST temperature through time
 
 ### CA Sheephead versus urchin abundance 
 
@@ -268,9 +225,6 @@ sheephead_and_urchin <- biomass |>
   filter(common_name %in% c("California Sheephead", 
                             "Purple Urchin", 
                             "Red Urchin")) |> 
-  # filtering for Santa Cruz Island Sites
-  filter(site %in% c("SCDI",
-                     "SCTW")) |> 
   # renaming date for lubridate adjustment
   rename(original_date = date) |>  
   # using mutate and lubridate to convert original_date
@@ -309,8 +263,6 @@ ggplot(sheephead_and_urchin) +
              color = "purple") +  
   geom_point(aes(y = red_urchin),
              color ="red") + 
-  facet_wrap(~ site,
-             ncol = 1) + 
   # using labs to label axes
   labs(
     x = "California sheephead mean dry biomass (g/m^2)",
@@ -319,45 +271,41 @@ ggplot(sheephead_and_urchin) +
   theme_minimal()
 ```
 
-#### CA Sheephead vs Purple Urchin abundance
+#### Running a Correlation Test
+
+Due to the data having clear outliers (such as the purple urchin biomass at approximately 200 g/m^2^), and it not following a clear linear trend, a Spearman's Rank correlation \(\rho\) appears to be the appropriate correlation test for this data when compared to a Pearson's correlation ($r$) where assumptions include a linear relationship between variables, variables are continuous, and that variables are normally distributed. 
+
+**Assumptions**
+
+* **Independent observations:** As sites are repeatedly sampled through time, populations likely carry over observations may have temporal dependence. Due to this resulting P-values should be examined cautiously. 
+* **Monotonic relationship between variables:** Visually it can be seen that lower CA sheephead mean dry biomass is associated with higher urchin mean dry biomass. This trend is continues where with higher dry biomass of CA sheephead, urchin biomass across the two species shows an approximate decline. This indicates a monotonic relationship. 
 
 ```{r}
-#| label: visualizing-urchin-and-sheephead-data
-
-# base layer: ggplot
-ggplot(sheephead_and_urchin) + 
-  # looking at CA sheephead biomass on x axis, purple urchin on y
-  aes(x = california_sheephead,
-      y = purple_urchin) + 
-  # second layer: geom_point
- geom_point() + 
- # using labs to label axes
-  labs(
-    x = "California sheephead mean dry biomass (g/m^2)",
-    y = "Purple urchin mean dry biomass (g/m^2)") +
-  # custom theme
-  theme_minimal()
+#| label: spearmans-test-purple-urchin
+# urchin_sheephead_spearson to view test
+urchin_sheephead_spearson <- cor.test(sheephead_and_urchin$california_sheephead,
+         sheephead_and_urchin$purple_urchin,
+                             # pearson's correlation
+                             method = "spearman")
+# viewing results
+urchin_sheephead_spearson
 ```
 
-#### CA Sheephead vs Red Urchin abundance
+We found a moderate negative relationship between CA sheephead dry mean biomass (g/m^2^) and purple urchin biomass (g/m^2^) (Spearman's \(\rho\) = -0.47, S = 4800, n = 27, p = 0.016). 
 
 ```{r}
-#| label: visualizing-urchin-and-sheephead-data
-
-# base layer: ggplot
-ggplot(sheephead_and_urchin) + 
-  # looking at CA sheephead biomass on x axis, purple urchin on y
-  aes(x = california_sheephead,
-      y = red_urchin) + 
-  # second layer: geom_point
- geom_point() + 
- # using labs to label axes
-  labs(
-    x = "California sheephead mean dry biomass (g/m^2)",
-    y = "Red urchin mean dry biomass (g/m^2)") +
-  # custom theme
-  theme_minimal()
+#| label: spearmans-test-red-urchin
+# urchin_sheephead_spearson to view test
+urchin_sheephead_spearson <- cor.test(sheephead_and_urchin$california_sheephead,
+         sheephead_and_urchin$red_urchin,
+                             # pearson's correlation
+                             method = "spearman")
+# viewing results
+urchin_sheephead_spearson
 ```
+
+We found a moderate negative relationship between CA sheephead dry mean biomass (g/m^2^) and red urchin biomass (g/m^2^) (Spearman's \(\rho\) = -0.54, S = 5030, n = 27, p = 0.0045). 
+
 
 ### Urchin vs kelp abundance 
 
@@ -372,9 +320,6 @@ kelp_and_urchin <- biomass |>
   filter(common_name %in% c("Giant Kelp", 
                             "Purple Urchin", 
                             "Red Urchin")) |> 
-  # filtering for Santa Cruz Island Sites
-  filter(site %in% c("SCDI",
-                     "SCTW")) |> 
   # renaming date for lubridate adjustment
   rename(original_date = date) |>  
   # using mutate and lubridate to convert original_date
@@ -386,8 +331,7 @@ kelp_and_urchin <- biomass |>
   drop_na(dry_gm2) |> 
   # grouping by year and common_name
   group_by(year,
-           common_name,
-           site) |> 
+           common_name) |> 
   # using summarize to find mean dry_gm2 and make one row per year
   summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
   # ungrouping
@@ -402,63 +346,115 @@ kelp_and_urchin <- biomass |>
 
 
 ```{r}
-#| label: visualizing-urchin-and-kelp-data
+#| label: visualizing-urchin-and-sheephead-data
 
 # base layer: ggplot
 ggplot(kelp_and_urchin) + 
   # looking at CA sheephead biomass on x axis, purple urchin on y
-  aes(x = giant_kelp,
-      y = red_urchin) + 
+  aes(x = giant_kelp) + 
   # second layer: geom_point
- geom_point() + 
- # using labs to label axes
+  geom_point(aes(y = purple_urchin),
+             color = "purple") +  
+  geom_point(aes(y = red_urchin),
+             color ="red") + 
+  # using labs to label axes
   labs(
     x = "Giant Kelp mean dry biomass (g/m^2)",
-    y = "Red urchin mean dry biomass (g/m^2)") +
-  # custom theme
-  theme_minimal()
-```
-
-```{r}
-#| label: visualizing-urchin-and-kelp-data
-
-# base layer: ggplot
-ggplot(kelp_and_urchin) + 
-  # looking at CA sheephead biomass on x axis, purple urchin on y
-  aes(x = giant_kelp,
-      y = purple_urchin) + 
-  # second layer: geom_point
- geom_point() + 
- # using labs to label axes
-  labs(
-    x = "Giant Kelp mean dry biomass (g/m^2)",
-    y = "Purple urchin mean dry biomass (g/m^2)") +
+    y = "Urchin mean dry biomass (g/m^2)") +
   # custom theme
   theme_minimal()
 ```
 
 ### Biomass versus Temperature 
 
-#| label: time-series-mean-bottom-temperature 
+#### CA Sheephead Biomass vs. Temperature
+
 ```{r}
+#| label: sheephead-biomass-vs-temp
 # base layer: ggplot
 biomass_and_bottom_temp |> 
   filter(common_name == "California Sheephead") |>
-  ggplot(data = biomass_and_bottom_temp,
-         mapping = aes(x = mean_bottom_temp,
-      y = mean_dry_gm2)) + 
+  ggplot(mapping = aes(x = mean_bottom_temp,
+                       y = mean_dry_gm2)) + 
   # first layer: geom_point
   # custom color and adjusting size
   geom_point(
     color = "dodgerblue4",
-    size = 0.5) + 
+    size = 1.5) + 
   # using labs to label x and y axis 
   labs(
-    x = "California sheephead mean dry biomass (g/m^2)",
-    y = "Temperature (celcius)") +
+    x = "Temperature (celcius)",
+    y = "California sheephead mean dry biomass (g/m^2)") +
   # custom theme
   theme_minimal()
 ```
+
+#### Giant Kelp Biomass vs. Temperature
+
+```{r}
+#| label: kelp-biomass-vs-temp
+# base layer: ggplot
+biomass_and_bottom_temp |> 
+  filter(common_name == "Giant Kelp") |>
+  ggplot(mapping = aes(x = mean_bottom_temp,
+                       y = mean_dry_gm2)) + 
+  # first layer: geom_point
+  # custom color and adjusting size
+  geom_point(
+    color = "seagreen",
+    size = 1.5) + 
+  # using labs to label x and y axis 
+  labs(
+    x = "Temperature (celcius)",
+    y = "Giant Kelp mean dry biomass (g/m^2)") +
+  # custom theme
+  theme_minimal()
+```
+
+#### Red Urchin Biomass vs. Temperature
+
+```{r}
+#| label: red-urchin-biomass-vs-temp
+# base layer: ggplot
+biomass_and_bottom_temp |> 
+  filter(common_name == "Red Urchin") |>
+  ggplot(mapping = aes(x = mean_bottom_temp,
+                       y = mean_dry_gm2)) + 
+  # first layer: geom_point
+  # custom color and adjusting size
+  geom_point(
+    color = "red",
+    size = 1.5) + 
+  # using labs to label x and y axis 
+  labs(
+    x = "Temperature (celcius)",
+    y = "Red urchin mean dry biomass (g/m^2)") +
+  # custom theme
+  theme_minimal()
+```
+
+#### Purple Urchin Biomass vs. Temperature
+
+```{r}
+#| label: purple-urchin-biomass-vs-temp
+# base layer: ggplot
+biomass_and_bottom_temp |> 
+  filter(common_name == "Purple Urchin") |>
+  ggplot(mapping = aes(x = mean_bottom_temp,
+                       y = mean_dry_gm2)) + 
+  # first layer: geom_point
+  # custom color and adjusting size
+  geom_point(
+    color = "purple",
+    size = 1.5) + 
+  # using labs to label x and y axis 
+  labs(
+    x = "Temperature (celcius)",
+    y = "Purple urchin mean dry biomass (g/m^2)") +
+  # custom theme
+  theme_minimal()
+```
+
 
 
 
