@@ -97,8 +97,7 @@ biomass_clean <- biomass |>
   # using summarize to get the mean dry biomass and make one row per year
   summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
   # ungrouping data 
-  ungroup() |> 
-  arrange(common_name, year)
+  ungroup() 
 
 # BOTTOM TEMPERATURE
 
@@ -116,9 +115,7 @@ bottom_temp_clean <- bottom_temp |>
   # using summarize to get mean temp and make one row per year
   summarize(mean_bottom_temp = mean(temp_c)) |> 
   # ungrouping the data 
-  ungroup() |> 
-  arrange(year)
-
+  ungroup()
 ```
 
 #### Joining Datasets
@@ -306,7 +303,6 @@ urchin_sheephead_spearson
 
 We found a moderate negative relationship between CA sheephead dry mean biomass (g/m^2^) and red urchin biomass (g/m^2^) (Spearman's \(\rho\) = -0.54, S = 5030, n = 27, p = 0.0045). 
 
-
 ### Urchin vs kelp abundance 
 
 ```{r}
@@ -346,7 +342,7 @@ kelp_and_urchin <- biomass |>
 
 
 ```{r}
-#| label: visualizing-urchin-and-sheephead-data
+#| label: visualizing-urchin-and-kelp-data
 
 # base layer: ggplot
 ggplot(kelp_and_urchin) + 
@@ -453,6 +449,43 @@ biomass_and_bottom_temp |>
     y = "Purple urchin mean dry biomass (g/m^2)") +
   # custom theme
   theme_minimal()
+```
+
+### Average Biomass and SD Through Years
+
+#### Purple Urchin
+
+```{r}
+p_urchin_avg_biomass <- biomass |> 
+  # clean names
+  clean_names() |>  
+  # filtering for purple urchin
+  filter(common_name == "Purple Urchin") |> 
+  drop_na(dry_gm2) |> 
+  # renaming date for lubridate adjustment
+  rename(original_date = date) |>  
+  # using mutate and lubridate to convert original_date
+  # into new date column to look at by year
+  mutate(
+    date = ymd(original_date),
+    year = floor_date(date, unit = "year")) |>
+  mutate(
+    overall_mean = mean(dry_gm2),
+    overall_sd = sd(dry_gm2),
+    sd_from_mean = (dry_gm2 - overall_mean) / overall_sd,
+    period = case_when(
+      year < ymd("2014-01-01") ~ "Before",
+      year <= ymd("2015-01-01") ~ "During",
+      year > ymd("2015-01-01") ~ "After"
+    )) |> 
+  relocate (period, sd_from_mean, overall_mean, overall_sd, year, original_date, site, common_name, dry_gm2)
+```
+
+```{r}
+
+
+
+
 ```
 
 

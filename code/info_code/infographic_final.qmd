@@ -1,5 +1,0 @@
----
-title: "infographic_final"
-format: html
----
-
