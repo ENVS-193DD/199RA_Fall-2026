@@ -195,6 +195,8 @@ ggplot(fish_ts,
   geom_point(size = 0.5) + 
   # faceting by species
   facet_wrap(~ common_name,
+             # using free y so y axis adjusts
+             scales = "free_y",
              # putting into one column 
              ncol = 1) +
   # customizing x axis year labels for every 3 years
