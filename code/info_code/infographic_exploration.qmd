@@ -90,7 +90,8 @@ biomass_clean <- biomass |>
   drop_na(dry_gm2) |> 
   # grouping data by year and species
   group_by(year,
-           common_name) |> 
+           common_name,
+           site) |> 
   # using summarize to get the mean dry biomass and make one row per year
   summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
   # ungrouping data 
@@ -138,8 +139,8 @@ ggplot(data = biomass_clean,
        # year on x axis, mean dry biomass on y
        # coloring by species name
        mapping = aes(x = year,
-                     y = mean_dry_gm2, 
-                     fill = common_name,
+                     y = mean_dry_gm2,
+                     group = site,
                      color = common_name)) + 
   geom_area(alpha = 0.8) + 
   # second layer: geom_point
@@ -155,11 +156,6 @@ ggplot(data = biomass_clean,
                date_labels = "%Y") + 
   # customizing colors
   scale_color_manual(values = c(
-    "Giant Kelp" = "seagreen",
-    "California Sheephead" = "dodgerblue4",
-    "Purple Urchin" = "purple",
-    "Red Urchin" = "firebrick")) + 
-  scale_fill_manual(values = c(
     "Giant Kelp" = "seagreen",
     "California Sheephead" = "dodgerblue4",
     "Purple Urchin" = "purple",
@@ -230,7 +226,8 @@ sheephead_and_urchin <- biomass |>
   drop_na(dry_gm2) |> 
   # grouping by year and common_name
   group_by(year,
-           common_name) |> 
+           common_name, 
+           site) |> 
   # using summarize to find mean dry_gm2 and make one row per year
   summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
   # ungrouping
@@ -486,7 +483,7 @@ p_urchin_avg_biomass <- biomass |>
                               "During",
                               "After")) |> 
 # grouping data by year and period for summarize
-  group_by(year, period) |> 
+  group_by(year, period, site) |> 
   # using summarize to find the average sd from mean per year
   summarize(
     sd_from_mean = mean(sd_from_mean)) |> 
