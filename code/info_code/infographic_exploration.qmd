@@ -53,9 +53,6 @@ view(biomass_missing)
 temp_missing <- bottom_temp |>  
   # cleaning names
   clean_names() |> 
-  # filtering for Santa Cruz Island Sites
-  filter(site %in% c("SCDI",
-                     "SCTW")) |> 
   # selecting temperature
   select(temp_c) |> 
   # using gg_miss_var to check for "na" data
