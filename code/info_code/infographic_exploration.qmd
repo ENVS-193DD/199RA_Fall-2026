@@ -138,11 +138,15 @@ biomass_and_bottom_temp <- full_join(
        # coloring by species name
        mapping = aes(x = year,
                      y = mean_dry_gm2,
-                     group = site,
-                     linetype = site,
                      color = common_name)) + 
   # second layer: geom_point
-  geom_line() + 
+  geom_line(aes(group = site),
+            linewidth = 0.5,
+            alpha = 0.5) + 
+  stat_summary(fun = mean,
+               geom = "line",
+               aes(group = common_name),
+               linewidth = 1) + 
     # customizing x axis year labels for every 3 years
   scale_x_date(date_breaks = "5 years", 
                date_labels = "%Y") + 
@@ -160,7 +164,8 @@ biomass_and_bottom_temp <- full_join(
     x = "Time (years)",
     y = "Mean dry biomass (g/m^2)") +
   # adding custom theme 
-  theme_minimal() 
+  theme_minimal() + 
+  theme(legend.position = "none")
 ```
 
 #### Looking at temperature (celsius) through time 
@@ -417,7 +422,7 @@ biomass_and_bottom_temp |>
 #### Purple Urchin
 
 ```{r}
-p_urchin_avg_biomass <- biomass |> 
+check_p_urchin_avg_biomass <- biomass |> 
   # clean names
   clean_names() |>  
   # filtering for purple urchin
@@ -433,14 +438,40 @@ p_urchin_avg_biomass <- biomass |>
   # using mutate 
   mutate(
     # finding overall dry biomass mean
-    overall_mean = mean(dry_gm2),
-    # finding overall sd of biomass 
-    overall_sd = sd(dry_gm2),
-    # calculating sd from the mean
-    sd_from_mean = (dry_gm2 - overall_mean) / overall_sd,
-    # creating new column to display periods in relation to
+    overall_mean = mean(dry_gm2)) |> 
+  relocate(site, dry_gm2, overall_mean) |> 
+  arrange(site,year)
+```
+
+
+```{r}
+p_urchin_avg_biomass <- biomass |> 
+  # clean names
+  clean_names() |>  
+  # filtering for purple urchin
+  filter(common_name == "Purple Urchin") |> 
+  drop_na(dry_gm2) |> 
+  # renaming date for lubridate adjustment
+  rename(original_date = date) |>  
+  # using mutate and lubridate to convert original_date
+  # into new date column to look at by year
+  mutate(
+    date = ymd(original_date),
+    year = floor_date(date, unit = "year"),
+    overall_mean = mean(dry_gm2)) |>
+  # using mutate 
+  group_by(site) |> 
+  mutate(
+    site_mean = mean(dry_gm2),
+    site_sd = sd(dry_gm2)) |> 
+  ungroup() |> 
+  group_by(site, year) |> 
+  mutate(site_year_mean = mean(dry_gm2)) |> 
+  ungroup() |> 
+  mutate(sd_from_mean = (site_year_mean - overall_mean) / site_sd) |> 
+      # creating new column to display periods in relation to
     # the blob event (2014-2015)
-    period = case_when(
+  mutate (period = case_when(
       year < ymd("2014-01-01") ~ "Before",
       year <= ymd("2015-01-01") ~ "During",
       year > ymd("2015-01-01") ~ "After")) |> 
@@ -449,13 +480,9 @@ p_urchin_avg_biomass <- biomass |>
                               "Before",
                               "During",
                               "After")) |> 
-# grouping data by year and period for summarize
-  group_by(year, period, site) |> 
-  # using summarize to find the average sd from mean per year
-  summarize(
-    sd_from_mean = mean(sd_from_mean)) |> 
-  # ungrouping data 
-  ungroup() 
+  arrange(site,
+          year) |> 
+    relocate(site, dry_gm2, overall_mean, site_year_mean, sd_from_mean, site_sd, site_mean)
 ```
 
 ```{r}
