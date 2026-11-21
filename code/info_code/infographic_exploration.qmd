@@ -66,10 +66,7 @@ view(temp_missing)
 #### Clean Data 
 
 ```{r}
-#| label: cleaning-data
-
-# BIOMASS
-
+#| label: cleaning-data-biomass
 # creating new object, biomass_clean
 biomass_clean <- biomass |> 
   # cleaning names
@@ -96,9 +93,10 @@ biomass_clean <- biomass |>
   summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
   # ungrouping data 
   ungroup() 
+```
 
-# BOTTOM TEMPERATURE
-
+```{r}
+#| label: cleaning-data-temp
 # creating new object to look at bottom temp data
 bottom_temp_clean <- bottom_temp |> 
   # cleaning names
@@ -109,7 +107,7 @@ bottom_temp_clean <- bottom_temp |>
     date = ymd(date_local),
     year = floor_date(date, unit = "year")) |>
   # grouping data by year
-  group_by(year) |> 
+  group_by(year, site) |> 
   # using summarize to get mean temp and make one row per year
   summarize(mean_bottom_temp = mean(temp_c)) |> 
   # ungrouping the data 
@@ -121,13 +119,13 @@ bottom_temp_clean <- bottom_temp |>
 
 ```{r}
 #| label: joining-datasets
-
 # creating new object to join datasets
 biomass_and_bottom_temp <- full_join(
   biomass_clean,
   bottom_temp_clean,
   # joining datasets by year
-  by = c("year"))
+  by = c("year", 
+         "site"))
 ```
 
 #### Looking at CA Sheephead, Giant Kelp, and Red and Purple Urchins through time
@@ -135,25 +133,22 @@ biomass_and_bottom_temp <- full_join(
 ```{r}
 #| label: biomass-timeseries
 # base layer: ggplot
-ggplot(data = biomass_clean,
+  ggplot(data = biomass_clean,
        # year on x axis, mean dry biomass on y
        # coloring by species name
        mapping = aes(x = year,
                      y = mean_dry_gm2,
                      group = site,
+                     linetype = site,
                      color = common_name)) + 
-  geom_area(alpha = 0.8) + 
   # second layer: geom_point
   geom_line() + 
-  # faceting by species
-  facet_wrap(~ common_name,
-             # letting y axis adjust for each species 
-             scales = "free_y", 
-             # putting in one column for better viewing 
-             ncol = 1) + 
     # customizing x axis year labels for every 3 years
   scale_x_date(date_breaks = "5 years", 
                date_labels = "%Y") + 
+  facet_wrap(~common_name,
+             scale = "free_y",
+             ncol = 1) + 
   # customizing colors
   scale_color_manual(values = c(
     "Giant Kelp" = "seagreen",
@@ -165,8 +160,7 @@ ggplot(data = biomass_clean,
     x = "Time (years)",
     y = "Mean dry biomass (g/m^2)") +
   # adding custom theme 
-  theme_minimal() + 
-  theme(legend.position = "NONE")
+  theme_minimal() 
 ```
 
 #### Looking at temperature (celsius) through time 
@@ -180,7 +174,9 @@ ggplot(data = biomass_clean,
 ggplot(bottom_temp_clean) + 
   # x axis year, y axis mean temperature
   aes(x = year,
-      y = mean_bottom_temp) + 
+      y = mean_bottom_temp,
+      group = site,
+      linetype = site) + 
   # first layer: geom_line
   # custom color for line
   geom_line(color = "sienna2") + 
@@ -226,7 +222,7 @@ sheephead_and_urchin <- biomass |>
   drop_na(dry_gm2) |> 
   # grouping by year and common_name
   group_by(year,
-           common_name, 
+           common_name,
            site) |> 
   # using summarize to find mean dry_gm2 and make one row per year
   summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
@@ -250,52 +246,23 @@ ggplot(sheephead_and_urchin) +
   # looking at CA sheephead biomass on x axis, purple urchin on y
   aes(x = california_sheephead) + 
   # second layer: geom_point
-  geom_point(aes(y = purple_urchin),
-             color = "purple") +  
-  geom_point(aes(y = red_urchin),
-             color ="red") + 
+  geom_point(aes(y = purple_urchin,
+                color = "Purple Urchin"),
+             alpha = 0.5) +  
+  geom_point(aes(y = red_urchin,
+                 color = "Red Urchin"),
+             alpha = 0.5) + 
   # using labs to label axes
+  scale_color_manual(values = c(
+    "Purple Urchin" = "purple",
+    "Red Urchin" = "firebrick")) + 
   labs(
     x = "California sheephead mean dry biomass (g/m^2)",
     y = "Urchin mean dry biomass (g/m^2)") +
   # custom theme
-  theme_minimal()
+  theme_minimal() + 
+  theme(legend.position = "none")
 ```
-
-#### Running a Correlation Test
-
-Due to the data having clear outliers (such as the purple urchin biomass at approximately 200 g/m^2^), and it not following a clear linear trend, a Spearman's Rank correlation \(\rho\) appears to be the appropriate correlation test for this data when compared to a Pearson's correlation ($r$) where assumptions include a linear relationship between variables, variables are continuous, and that variables are normally distributed. 
-
-**Assumptions**
-
-* **Independent observations:** As sites are repeatedly sampled through time, populations likely carry over observations may have temporal dependence. Due to this resulting P-values should be examined cautiously. 
-* **Monotonic relationship between variables:** Visually it can be seen that lower CA sheephead mean dry biomass is associated with higher urchin mean dry biomass. This trend is continues where with higher dry biomass of CA sheephead, urchin biomass across the two species shows an approximate decline. This indicates a monotonic relationship. 
-
-```{r}
-#| label: spearmans-test-purple-urchin
-# urchin_sheephead_spearson to view test
-urchin_sheephead_spearson <- cor.test(sheephead_and_urchin$california_sheephead,
-         sheephead_and_urchin$purple_urchin,
-                             # pearson's correlation
-                             method = "spearman")
-# viewing results
-urchin_sheephead_spearson
-```
-
-We found a moderate negative relationship between CA sheephead dry mean biomass (g/m^2^) and purple urchin biomass (g/m^2^) (Spearman's \(\rho\) = -0.47, S = 4800, n = 27, p = 0.016). 
-
-```{r}
-#| label: spearmans-test-red-urchin
-# urchin_sheephead_spearson to view test
-urchin_sheephead_spearson <- cor.test(sheephead_and_urchin$california_sheephead,
-         sheephead_and_urchin$red_urchin,
-                             # pearson's correlation
-                             method = "spearman")
-# viewing results
-urchin_sheephead_spearson
-```
-
-We found a moderate negative relationship between CA sheephead dry mean biomass (g/m^2^) and red urchin biomass (g/m^2^) (Spearman's \(\rho\) = -0.54, S = 5030, n = 27, p = 0.0045). 
 
 ### Urchin vs kelp abundance 
 
