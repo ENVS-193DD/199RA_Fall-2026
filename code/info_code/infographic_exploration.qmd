@@ -422,7 +422,7 @@ biomass_and_bottom_temp |>
 #### Purple Urchin
 
 ```{r}
-check_p_urchin_avg_biomass <- biomass |> 
+p_urchin_check <- biomass |> 
   # clean names
   clean_names() |>  
   # filtering for purple urchin
@@ -430,47 +430,40 @@ check_p_urchin_avg_biomass <- biomass |>
   drop_na(dry_gm2) |> 
   # renaming date for lubridate adjustment
   rename(original_date = date) |>  
-  # using mutate and lubridate to convert original_date
+  mutate(
+    # using mutate and lubridate to convert original_date
   # into new date column to look at by year
-  mutate(
-    date = ymd(original_date),
-    year = floor_date(date, unit = "year")) |>
-  # using mutate 
-  mutate(
-    # finding overall dry biomass mean
-    overall_mean = mean(dry_gm2)) |> 
-  relocate(site, dry_gm2, overall_mean) |> 
-  arrange(site,year)
-```
-
-
-```{r}
-p_urchin_avg_biomass <- biomass |> 
-  # clean names
-  clean_names() |>  
-  # filtering for purple urchin
-  filter(common_name == "Purple Urchin") |> 
-  drop_na(dry_gm2) |> 
-  # renaming date for lubridate adjustment
-  rename(original_date = date) |>  
-  # using mutate and lubridate to convert original_date
-  # into new date column to look at by year
-  mutate(
     date = ymd(original_date),
     year = floor_date(date, unit = "year"),
-    overall_mean = mean(dry_gm2)) |>
-  # using mutate 
-  group_by(site) |> 
-  mutate(
-    site_mean = mean(dry_gm2),
-    site_sd = sd(dry_gm2)) |> 
-  ungroup() |> 
+    # calculating the total number of observations 
+    n_total = n(),
+    # finding the overall dry biomass mean across all sites and year
+    overall_mean = mean(dry_gm2),
+    # calculating difference in dry_gm2 and the overall mean
+    dif = dry_gm2 - overall_mean,
+    # calculating the square difference
+    sq_dif = (dif)^2,
+    # taking the sum of these values
+    sum_sq = sum(sq_dif),
+    # finding the standard deviation from the mean across all sites and years
+    overall_sd = sqrt(sum_sq / (n_total - 1)),
+    # calculating the z-score
+    z = dif / overall_sd) |>
+  # arranging data by site and year
+  arrange(site, year) |>
+  # selecting for desired columns
+  select(site, year, dry_gm2, overall_mean, dif, sq_dif, n_total, sum_sq, overall_sd, z) 
+```
+
+```{r}
+# creating new object 
+p_urchin_sd <- p_urchin_check |> 
+  # grouping by site and year
   group_by(site, year) |> 
-  mutate(site_year_mean = mean(dry_gm2)) |> 
-  ungroup() |> 
-  mutate(sd_from_mean = (site_year_mean - overall_mean) / site_sd) |> 
-      # creating new column to display periods in relation to
-    # the blob event (2014-2015)
+  # using summarize to get one z-score for each year at one site
+  summarize(z = mean(z)) |> 
+  # using mutate to create Before, During, After periods
+  # during meaning the blob (2014-2015)
   mutate (period = case_when(
       year < ymd("2014-01-01") ~ "Before",
       year <= ymd("2015-01-01") ~ "During",
@@ -479,18 +472,15 @@ p_urchin_avg_biomass <- biomass |>
   mutate(period = fct_relevel(period,
                               "Before",
                               "During",
-                              "After")) |> 
-  arrange(site,
-          year) |> 
-    relocate(site, dry_gm2, overall_mean, site_year_mean, sd_from_mean, site_sd, site_mean)
+                              "After"))
 ```
 
 ```{r}
 # base layer: ggplot
-ggplot(data = p_urchin_avg_biomass,
-       # x-axis: period, y-axis: sd_from_mean
+ggplot(data = p_urchin_sd,
+       # x-axis: period, y-axis: z-score
        mapping = aes(x = period,
-                     y = sd_from_mean,
+                     y = z,
                      # coloring by period
                      color = period)) + 
   # first layer: geom_jitter
