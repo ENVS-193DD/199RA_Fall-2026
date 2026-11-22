@@ -85,14 +85,16 @@ biomass_clean <- biomass |>
     year = floor_date(date, unit = "year")) |>
   # dropping na values to use summarize
   drop_na(dry_gm2) |> 
-  # grouping data by year and species
+  # grouping data by year species, and site
   group_by(year,
            common_name,
            site) |> 
-  # using summarize to get the mean dry biomass and make one row per year
+  # using summarize to get the mean dry biomass
+  # having one mean for each site for each year
   summarize(mean_dry_gm2 = mean(dry_gm2)) |> 
   # ungrouping data 
-  ungroup() 
+  ungroup() |> 
+  arrange(common_name, year, site)
 ```
 
 ```{r}
@@ -108,10 +110,33 @@ bottom_temp_clean <- bottom_temp |>
     year = floor_date(date, unit = "year")) |>
   # grouping data by year
   group_by(year, site) |> 
-  # using summarize to get mean temp and make one row per year
+  # using summarize to get mean temp and make one row per year per site
   summarize(mean_bottom_temp = mean(temp_c)) |> 
   # ungrouping the data 
   ungroup()
+```
+
+```{r}
+#| label: checking-calculations_biomass_clean 
+
+check_biomass_mean <- biomass |> 
+  clean_names() |>  
+  # filtering for desired species 
+  filter(common_name %in% c("California Sheephead", 
+                            "Red Urchin", 
+                            "Purple Urchin", 
+                            "Giant Kelp")) |> 
+  # renaming date
+  rename(original_date = date) |>  
+  # using mutate and lubridate to convert original_date 
+  # into new date column that can be used to create time series
+  mutate(
+    date = ymd(original_date),
+    year = floor_date(date, unit = "year")) |>
+  # dropping na values to use summarize
+  drop_na(dry_gm2) |> 
+  arrange(common_name, year, site) |> 
+  relocate(year, site, common_name, dry_gm2)
 ```
 
 #### Joining Datasets
@@ -123,7 +148,7 @@ bottom_temp_clean <- bottom_temp |>
 biomass_and_bottom_temp <- full_join(
   biomass_clean,
   bottom_temp_clean,
-  # joining datasets by year
+  # joining data sets by year and site
   by = c("year", 
          "site"))
 ```
