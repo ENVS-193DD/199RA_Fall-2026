@@ -191,6 +191,14 @@ biomass_and_bottom_temp <- full_join(
   # adding custom theme 
   theme_minimal() + 
   theme(legend.position = "none")
+
+
+
+ggsave(filename = here("visualizations", "timseries_new.pdf"),
+       dpi = 300,
+       width = 6,
+       height = 8,
+       units = "in")
 ```
 
 #### Looking at temperature (celsius) through time 
